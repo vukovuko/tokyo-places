@@ -1,13 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, memo } from "react";
-import {
-  APIProvider,
-  Map,
-  AdvancedMarker,
-  useMap,
-} from "@vis.gl/react-google-maps";
-import { MarkerClusterer, type Marker } from "@googlemaps/markerclusterer";
+import { useState, useEffect } from "react";
+import { APIProvider, Map, AdvancedMarker } from "@vis.gl/react-google-maps";
 import { MapPin } from "./map-pin";
 
 interface Place {
@@ -68,70 +62,15 @@ function UserLocationDot({ heading }: { heading: number | null }) {
           }}
         />
       )}
-      {/* Pulse ring — animate-pulse is cheaper than animate-ping */}
-      <div className="absolute h-6 w-6 animate-pulse rounded-full bg-blue-400 opacity-30" />
+      {/* Pulse ring */}
+      <div className="absolute h-8 w-8 animate-ping rounded-full bg-blue-400 opacity-20" />
       {/* Blue dot */}
       <div className="h-4 w-4 rounded-full border-2 border-white bg-blue-500 shadow-md" />
     </div>
   );
 }
 
-function ClusteredMarkers({
-  places,
-  selectedPlaceId,
-  onPlaceSelect,
-}: ExplorerMapProps) {
-  const map = useMap();
-  const [markers, setMarkers] = useState<Record<string, Marker>>({});
-
-  const clusterer = useMemo(() => {
-    if (!map) return null;
-    return new MarkerClusterer({ map });
-  }, [map]);
-
-  useEffect(() => {
-    if (!clusterer) return;
-    clusterer.clearMarkers();
-    clusterer.addMarkers(Object.values(markers));
-  }, [clusterer, markers]);
-
-  const setMarkerRef = useCallback((marker: Marker | null, key: string) => {
-    setMarkers((prev) => {
-      if ((marker && prev[key]) || (!marker && !prev[key])) return prev;
-      if (marker) return { ...prev, [key]: marker };
-      const { [key]: _, ...rest } = prev;
-      return rest;
-    });
-  }, []);
-
-  return (
-    <>
-      {places.map((place) => {
-        if (!place.latitude || !place.longitude) return null;
-        const primaryColor =
-          place.placeCategories[0]?.category?.color || "#6b7280";
-        const isSelected = place.id === selectedPlaceId;
-
-        return (
-          <AdvancedMarker
-            key={place.id}
-            ref={(marker) => setMarkerRef(marker, String(place.id))}
-            position={{
-              lat: place.latitude,
-              lng: place.longitude,
-            }}
-            onClick={() => onPlaceSelect(place.id)}
-            title={place.title}
-          >
-            <MapPin color={primaryColor} selected={isSelected} />
-          </AdvancedMarker>
-        );
-      })}
-    </>
-  );
-}
-
-export const ExplorerMap = memo(function ExplorerMap({
+export function ExplorerMap({
   places,
   selectedPlaceId,
   onPlaceSelect,
@@ -172,13 +111,27 @@ export const ExplorerMap = memo(function ExplorerMap({
           </AdvancedMarker>
         )}
 
-        {/* Clustered place markers */}
-        <ClusteredMarkers
-          places={places}
-          selectedPlaceId={selectedPlaceId}
-          onPlaceSelect={onPlaceSelect}
-        />
+        {places.map((place) => {
+          if (!place.latitude || !place.longitude) return null;
+          const primaryColor =
+            place.placeCategories[0]?.category?.color || "#6b7280";
+          const isSelected = place.id === selectedPlaceId;
+
+          return (
+            <AdvancedMarker
+              key={place.id}
+              position={{
+                lat: place.latitude,
+                lng: place.longitude,
+              }}
+              onClick={() => onPlaceSelect(place.id)}
+              title={place.title}
+            >
+              <MapPin color={primaryColor} selected={isSelected} />
+            </AdvancedMarker>
+          );
+        })}
       </Map>
     </APIProvider>
   );
-});
+}

@@ -1,14 +1,9 @@
-import { memo } from "react";
-
 interface MapPinProps {
   color: string;
   selected?: boolean;
 }
 
-export const MapPin = memo(function MapPin({
-  color,
-  selected = false,
-}: MapPinProps) {
+export function MapPin({ color, selected = false }: MapPinProps) {
   return (
     <svg
       width={selected ? 36 : 28}
@@ -24,4 +19,4 @@ export const MapPin = memo(function MapPin({
       <circle cx="14" cy="14" r="6" fill="white" opacity="0.9" />
     </svg>
   );
-});
+}

@@ -19,7 +19,7 @@ import {
   ComboboxValue,
   useComboboxAnchor,
 } from "@/components/ui/combobox";
-import { Map, List, Star, Search, X } from "lucide-react";
+import { Map, List, Search } from "lucide-react";
 import { getContrastColor } from "@/lib/utils";
 
 interface Category {
@@ -209,45 +209,6 @@ function SidebarContent({
                     : "Unvisited"}
               </Button>
             ))}
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Rating filter */}
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Minimum Rating</p>
-          <div className="flex gap-1">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() =>
-                  onFiltersChange({
-                    ...filters,
-                    minRating: filters.minRating === n ? null : n,
-                  })
-                }
-                className="p-0.5"
-              >
-                <Star
-                  className={`h-5 w-5 ${
-                    filters.minRating && n <= filters.minRating
-                      ? "fill-amber-400 text-amber-400"
-                      : "text-muted-foreground"
-                  }`}
-                />
-              </button>
-            ))}
-            {filters.minRating && (
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => onFiltersChange({ ...filters, minRating: null })}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            )}
           </div>
         </div>
 

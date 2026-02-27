@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { X, Search } from "lucide-react";
 import { buildSearchParams } from "@/lib/search-params";
 import { getContrastColor } from "@/lib/utils";
-import { RATING_OPTIONS, VISITED_OPTIONS } from "@/lib/constants";
+import { VISITED_OPTIONS } from "@/lib/constants";
 
 interface Category {
   id: number;
@@ -59,14 +59,12 @@ export function PlacesToolbar({
 
   const currentVisited = searchParams.get("visited") || "all";
   const currentCategories = searchParams.getAll("category");
-  const currentRating = searchParams.get("rating") || "";
   const currentCity = searchParams.get("city") || "";
   const currentWard = searchParams.get("ward") || "";
   const currentSearch = searchParams.get("search") || "";
   const hasFilters =
     currentVisited !== "all" ||
     currentCategories.length > 0 ||
-    currentRating ||
     currentCity ||
     currentWard ||
     currentSearch;
@@ -128,6 +126,9 @@ export function PlacesToolbar({
           <Combobox
             items={VISITED_OPTIONS.map((o) => o.value)}
             value={currentVisited}
+            itemToStringLabel={(val) =>
+              VISITED_OPTIONS.find((o) => o.value === val)?.label ?? val
+            }
             onValueChange={(val) =>
               updateParams({ visited: (val as string) || "all" })
             }
@@ -137,42 +138,6 @@ export function PlacesToolbar({
               <ComboboxList>
                 {(value) => {
                   const opt = VISITED_OPTIONS.find((o) => o.value === value);
-                  return (
-                    <ComboboxItem key={value} value={value}>
-                      {opt?.label ?? value}
-                    </ComboboxItem>
-                  );
-                }}
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
-        </div>
-
-        {/* Rating filter */}
-        <div className="w-36">
-          <Combobox
-            items={["", ...RATING_OPTIONS.map((o) => String(o.value))]}
-            value={currentRating}
-            onValueChange={(val) =>
-              updateParams({
-                rating: val ? Number(val as string) : undefined,
-              })
-            }
-          >
-            <ComboboxInput placeholder="Rating" />
-            <ComboboxContent>
-              <ComboboxList>
-                {(value) => {
-                  if (value === "") {
-                    return (
-                      <ComboboxItem key="all" value="">
-                        All Ratings
-                      </ComboboxItem>
-                    );
-                  }
-                  const opt = RATING_OPTIONS.find(
-                    (o) => String(o.value) === value,
-                  );
                   return (
                     <ComboboxItem key={value} value={value}>
                       {opt?.label ?? value}

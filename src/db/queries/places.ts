@@ -21,7 +21,6 @@ interface GetPlacesOptions {
   categoryIds?: string[];
   visited?: string;
   source?: string;
-  rating?: number;
   city?: string;
   ward?: string;
   sort?: string;
@@ -36,7 +35,6 @@ export async function getPlaces(options: GetPlacesOptions = {}) {
     categoryIds = [],
     visited,
     source,
-    rating,
     city,
     ward,
     sort = "createdAt",
@@ -62,10 +60,6 @@ export async function getPlaces(options: GetPlacesOptions = {}) {
 
   if (source) {
     conditions.push(eq(places.source, source));
-  }
-
-  if (rating) {
-    conditions.push(eq(places.rating, rating));
   }
 
   if (city) {

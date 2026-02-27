@@ -22,7 +22,6 @@ export default async function PlacesPage({
         categoryIds: params.categories,
         visited: params.visited,
         source: params.source,
-        rating: params.rating,
         city: params.city,
         ward: params.ward,
         sort: params.sort,

@@ -7,7 +7,6 @@ export interface ParsedSearchParams {
   categories: string[];
   visited: string | undefined;
   source: string | undefined;
-  rating: number | undefined;
   city: string | undefined;
   ward: string | undefined;
 }
@@ -24,7 +23,6 @@ export function parseSearchParams(
     categories: parseArray(searchParams.category),
     visited: searchParams.visited as string | undefined,
     source: searchParams.source as string | undefined,
-    rating: searchParams.rating ? Number(searchParams.rating) : undefined,
     city: searchParams.city as string | undefined,
     ward: searchParams.ward as string | undefined,
   };
@@ -69,10 +67,6 @@ export function buildSearchParams(
   if (params.source !== undefined) {
     if (params.source === "") newParams.delete("source");
     else newParams.set("source", params.source);
-  }
-  if (params.rating !== undefined) {
-    if (params.rating === 0) newParams.delete("rating");
-    else newParams.set("rating", String(params.rating));
   }
   if (params.city !== undefined) {
     if (params.city === "") newParams.delete("city");

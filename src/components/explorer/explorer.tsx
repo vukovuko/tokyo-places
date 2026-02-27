@@ -17,7 +17,6 @@ export interface Filters {
   search: string;
   categoryIds: number[];
   visited: "all" | "true" | "false";
-  minRating: number | null;
   cities: string[];
   wards: string[];
 }
@@ -35,7 +34,6 @@ export function Explorer({ places, categories }: ExplorerProps) {
     search: "",
     categoryIds: [],
     visited: "all",
-    minRating: null,
     cities: [],
     wards: [],
   });
@@ -64,14 +62,6 @@ export function Explorer({ places, categories }: ExplorerProps) {
       // Visited filter
       if (filters.visited === "true" && !place.visited) return false;
       if (filters.visited === "false" && place.visited) return false;
-
-      // Rating filter
-      if (
-        filters.minRating &&
-        (!place.rating || place.rating < filters.minRating)
-      ) {
-        return false;
-      }
 
       // City filter
       if (
