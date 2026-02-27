@@ -41,6 +41,14 @@ export function Explorer({ places, categories }: ExplorerProps) {
     return !isNaN(id) && places.some((p) => p.id === id) ? id : null;
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [panKey, setPanKey] = useState(0);
+
+  const panTarget = useMemo(() => {
+    if (!selectedPlaceId || panKey === 0) return null;
+    const p = places.find((pl) => pl.id === selectedPlaceId);
+    if (!p) return null;
+    return { lat: p.latitude, lng: p.longitude, key: panKey };
+  }, [selectedPlaceId, panKey, places]);
   const {
     position: userPosition,
     heading: userHeading,
@@ -190,6 +198,7 @@ export function Explorer({ places, categories }: ExplorerProps) {
             userPosition={userPosition}
             userHeading={userHeading}
             locationError={locationError}
+            panTarget={panTarget}
           />
         ) : (
           <ExplorerList
@@ -204,6 +213,10 @@ export function Explorer({ places, categories }: ExplorerProps) {
         <PlaceDetailDrawer
           place={selectedPlace}
           onClose={() => selectPlace(null)}
+          onShowOnMap={() => {
+            if (view !== "map") setView("map");
+            setPanKey((k) => k + 1);
+          }}
         />
       )}
     </div>

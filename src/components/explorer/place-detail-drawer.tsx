@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronUp,
   Share2,
+  MapIcon,
 } from "lucide-react";
 import { getContrastColor } from "@/lib/utils";
 import { OpenClosedBadge } from "@/components/open-closed-badge";
@@ -54,9 +55,14 @@ interface Place {
 interface PlaceDetailDrawerProps {
   place: Place;
   onClose: () => void;
+  onShowOnMap?: () => void;
 }
 
-export function PlaceDetailDrawer({ place, onClose }: PlaceDetailDrawerProps) {
+export function PlaceDetailDrawer({
+  place,
+  onClose,
+  onShowOnMap,
+}: PlaceDetailDrawerProps) {
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`;
@@ -205,7 +211,18 @@ export function PlaceDetailDrawer({ place, onClose }: PlaceDetailDrawerProps) {
         <Separator />
 
         {/* Action buttons */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {onShowOnMap && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={onShowOnMap}
+            >
+              <MapIcon className="mr-1 h-4 w-4" />
+              Show on Map
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="flex-1" asChild>
             <a href={directionsUrl} target="_blank" rel="noopener noreferrer">
               <Navigation className="mr-1 h-4 w-4" />
