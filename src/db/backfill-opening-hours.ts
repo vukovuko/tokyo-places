@@ -61,6 +61,27 @@ async function main() {
         hasUpdate = true;
       }
 
+      if (details.rating != null) {
+        updateData.googleRating = details.rating;
+        hasUpdate = true;
+      }
+
+      if (details.userRatingCount != null) {
+        updateData.googleReviewCount = details.userRatingCount;
+        hasUpdate = true;
+      }
+
+      if (details.reviews?.length) {
+        updateData.googleReviews = details.reviews.map((r) => ({
+          authorName: r.authorAttribution.displayName,
+          rating: r.rating,
+          text: r.text?.text || r.originalText?.text || "",
+          relativeTime: r.relativePublishTimeDescription,
+          publishTime: r.publishTime,
+        }));
+        hasUpdate = true;
+      }
+
       if (hasUpdate) {
         await db
           .update(schema.places)

@@ -48,6 +48,7 @@ export const places = pgTable("places", {
   rating: smallint("rating"),
   city: varchar("city", { length: 255 }),
   ward: varchar("ward", { length: 255 }),
+  neighborhood: varchar("neighborhood", { length: 255 }),
   source: varchar("source", { length: 50 }),
   googlePhotoRef: text("google_photo_ref"),
   googlePhotoRefs: jsonb("google_photo_refs").$type<string[] | null>(),
@@ -61,6 +62,13 @@ export const places = pgTable("places", {
   businessStatus: varchar("business_status", { length: 50 }),
   googleRating: doublePrecision("google_rating"),
   googleReviewCount: integer("google_review_count"),
+  googleReviews: jsonb("google_reviews").$type<Array<{
+    authorName: string;
+    rating: number;
+    text: string;
+    relativeTime: string;
+    publishTime: string;
+  }> | null>(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

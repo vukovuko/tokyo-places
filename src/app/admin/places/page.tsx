@@ -15,23 +15,27 @@ export default async function PlacesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = parseSearchParams(await searchParams);
-  const [{ data: placesData, total }, allCategories, { cities, wards }] =
-    await Promise.all([
-      getPlaces({
-        search: params.search,
-        categoryIds: params.categories,
-        visited: params.visited,
-        source: params.source,
-        city: params.city,
-        ward: params.ward,
-        sort: params.sort,
-        order: params.order,
-        page: params.page,
-        perPage: params.perPage,
-      }),
-      getAllCategories(),
-      getDistinctCitiesAndWards(),
-    ]);
+  const [
+    { data: placesData, total },
+    allCategories,
+    { cities, wards, neighborhoods },
+  ] = await Promise.all([
+    getPlaces({
+      search: params.search,
+      categoryIds: params.categories,
+      visited: params.visited,
+      source: params.source,
+      city: params.city,
+      ward: params.ward,
+      neighborhood: params.neighborhood,
+      sort: params.sort,
+      order: params.order,
+      page: params.page,
+      perPage: params.perPage,
+    }),
+    getAllCategories(),
+    getDistinctCitiesAndWards(),
+  ]);
 
   return (
     <>
@@ -53,6 +57,7 @@ export default async function PlacesPage({
           categories={allCategories}
           cities={cities}
           wards={wards}
+          neighborhoods={neighborhoods}
         />
         <PlacesTable places={placesData} categories={allCategories} />
         <Pagination page={params.page} perPage={params.perPage} total={total} />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import Fuse from "fuse.js";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { getAllPlacesForMap } from "@/db/queries/places";
 import type { getCategoriesWithCounts } from "@/db/queries/categories";
@@ -22,15 +23,17 @@ export interface Filters {
   visited: "all" | "true" | "false";
   cities: string[];
   wards: string[];
+  neighborhoods: string[];
   nearMe: boolean;
 }
 
 interface ExplorerProps {
   places: Place[];
   categories: Category[];
+  isAdmin?: boolean;
 }
 
-export function Explorer({ places, categories }: ExplorerProps) {
+export function Explorer({ places, categories, isAdmin }: ExplorerProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [view, setView] = useState<"map" | "list">("map");
@@ -60,20 +63,75 @@ export function Explorer({ places, categories }: ExplorerProps) {
     visited: "all",
     cities: [],
     wards: [],
+    neighborhoods: [],
     nearMe: false,
   });
+  const [fitBounds, setFitBounds] = useState<{
+    south: number;
+    west: number;
+    north: number;
+    east: number;
+    key: number;
+  } | null>(null);
+  const [resetMapKey, setResetMapKey] = useState(0);
+
+  const handleFiltersChange = useCallback(
+    (next: Filters) => {
+      const prev = filters.neighborhoods;
+      setFilters(next);
+
+      if (
+        next.neighborhoods.length > 0 &&
+        JSON.stringify(next.neighborhoods) !== JSON.stringify(prev)
+      ) {
+        const matching = places.filter(
+          (p) => p.neighborhood && next.neighborhoods.includes(p.neighborhood),
+        );
+        if (matching.length > 0) {
+          let south = Infinity;
+          let west = Infinity;
+          let north = -Infinity;
+          let east = -Infinity;
+          for (const p of matching) {
+            if (p.latitude < south) south = p.latitude;
+            if (p.latitude > north) north = p.latitude;
+            if (p.longitude < west) west = p.longitude;
+            if (p.longitude > east) east = p.longitude;
+          }
+          setFitBounds({ south, west, north, east, key: Date.now() });
+        }
+      } else if (next.neighborhoods.length === 0 && prev.length > 0) {
+        setFitBounds(null);
+        setResetMapKey((k) => k + 1);
+      }
+    },
+    [filters.neighborhoods, places],
+  );
+
+  const fuse = useMemo(
+    () =>
+      new Fuse(places, {
+        keys: [
+          "title",
+          "address",
+          "description",
+          "placeCategories.category.name",
+        ],
+        threshold: 0.4,
+      }),
+    [places],
+  );
 
   const filteredPlaces = useMemo(() => {
+    // Pre-compute fuzzy match set when there's a text search
+    const fuzzyMatchIds = filters.search
+      ? new Set(fuse.search(filters.search).map((r) => r.item.id))
+      : null;
+
     return places.filter((place) => {
-      // Search filter
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        if (
-          !place.title.toLowerCase().includes(q) &&
-          !(place.address || "").toLowerCase().includes(q)
-        ) {
-          return false;
-        }
+      // Search filter (fuzzy)
+      if (fuzzyMatchIds && !fuzzyMatchIds.has(place.id)) {
+        return false;
       }
 
       // Category filter
@@ -102,9 +160,17 @@ export function Explorer({ places, categories }: ExplorerProps) {
       )
         return false;
 
+      // Neighborhood filter
+      if (
+        filters.neighborhoods.length > 0 &&
+        (!place.neighborhood ||
+          !filters.neighborhoods.includes(place.neighborhood))
+      )
+        return false;
+
       return true;
     });
-  }, [places, filters]);
+  }, [places, filters, fuse]);
 
   const distanceMap = useMemo(() => {
     if (!userPosition) return null;
@@ -130,16 +196,19 @@ export function Explorer({ places, categories }: ExplorerProps) {
     );
   }, [filteredPlaces, filters.nearMe, distanceMap]);
 
-  const { cities, wards } = useMemo(() => {
+  const { cities, wards, neighborhoods } = useMemo(() => {
     const citySet = new Set<string>();
     const wardSet = new Set<string>();
+    const neighborhoodSet = new Set<string>();
     for (const p of places) {
       if (p.city) citySet.add(p.city);
       if (p.ward) wardSet.add(p.ward);
+      if (p.neighborhood) neighborhoodSet.add(p.neighborhood);
     }
     return {
       cities: Array.from(citySet).sort(),
       wards: Array.from(wardSet).sort(),
+      neighborhoods: Array.from(neighborhoodSet).sort(),
     };
   }, [places]);
 
@@ -172,8 +241,9 @@ export function Explorer({ places, categories }: ExplorerProps) {
         categories={categories}
         cities={cities}
         wards={wards}
+        neighborhoods={neighborhoods}
         filters={filters}
-        onFiltersChange={setFilters}
+        onFiltersChange={handleFiltersChange}
         view={view}
         onViewChange={setView}
         open={sidebarOpen}
@@ -183,6 +253,7 @@ export function Explorer({ places, categories }: ExplorerProps) {
         userPosition={userPosition}
         locationError={locationError}
         allPlaces={places}
+        filteredPlaces={sortedPlaces}
         onPlaceSelect={(id: number) => {
           selectPlace(id);
           setSidebarOpen(false);
@@ -199,6 +270,8 @@ export function Explorer({ places, categories }: ExplorerProps) {
             userHeading={userHeading}
             locationError={locationError}
             panTarget={panTarget}
+            fitBounds={fitBounds}
+            resetMapKey={resetMapKey}
           />
         ) : (
           <ExplorerList
@@ -217,6 +290,7 @@ export function Explorer({ places, categories }: ExplorerProps) {
             if (view !== "map") setView("map");
             setPanKey((k) => k + 1);
           }}
+          isAdmin={isAdmin}
         />
       )}
     </div>

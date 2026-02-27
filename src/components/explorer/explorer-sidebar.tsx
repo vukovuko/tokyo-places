@@ -29,7 +29,7 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Map, List, Search, MapPin, Info } from "lucide-react";
+import { Map, List, Search, MapPin, Info, X } from "lucide-react";
 import { getContrastColor } from "@/lib/utils";
 
 interface Category {
@@ -49,6 +49,7 @@ interface ExplorerSidebarProps {
   categories: Category[];
   cities: string[];
   wards: string[];
+  neighborhoods: string[];
   filters: Filters;
   onFiltersChange: (filters: Filters) => void;
   view: "map" | "list";
@@ -60,8 +61,25 @@ interface ExplorerSidebarProps {
   userPosition: { lat: number; lng: number } | null;
   locationError: string | null;
   allPlaces: SearchPlace[];
+  filteredPlaces: SearchPlace[];
   onPlaceSelect: (id: number) => void;
 }
+
+const POPULAR_NEIGHBORHOODS = [
+  "Asakusa",
+  "Akihabara",
+  "Harajuku",
+  "Ginza",
+  "Roppongi",
+  "Ueno",
+  "Odaiba",
+  "Shimokitazawa",
+  "Ikebukuro",
+  "Nakameguro",
+  "Yanaka",
+  "Koenji",
+  "Tsukiji",
+];
 
 function MultiSelectLocation({
   items,
@@ -116,6 +134,7 @@ function SidebarContent({
   categories,
   cities,
   wards,
+  neighborhoods,
   filters,
   onFiltersChange,
   view,
@@ -125,6 +144,7 @@ function SidebarContent({
   userPosition,
   locationError,
   allPlaces,
+  filteredPlaces,
   onPlaceSelect,
 }: Omit<ExplorerSidebarProps, "open" | "onOpenChange">) {
   const [inputValue, setInputValue] = useState(filters.search);
@@ -151,15 +171,34 @@ function SidebarContent({
     [wardItems],
   );
 
-  const autoFiltersRef = useRef<{ categoryIds: number[]; wards: string[] }>({
+  const neighborhoodItems = useMemo(
+    () => neighborhoods.map((n) => ({ name: n })),
+    [neighborhoods],
+  );
+  const neighborhoodFuse = useMemo(
+    () => new Fuse(neighborhoodItems, { keys: ["name"], threshold: 0.3 }),
+    [neighborhoodItems],
+  );
+
+  const autoFiltersRef = useRef<{
+    categoryIds: number[];
+    wards: string[];
+    neighborhoods: string[];
+  }>({
     categoryIds: [],
     wards: [],
+    neighborhoods: [],
   });
 
   const suggestions = useMemo(() => {
-    if (!inputValue) return [];
-    return fuse.search(inputValue, { limit: 8 }).map((r) => r.item);
-  }, [fuse, inputValue]);
+    if (!inputValue.trim()) return [];
+    // If smart search consumed all tokens, show filtered places directly
+    if (!filters.search) {
+      return filteredPlaces.slice(0, 8);
+    }
+    // Otherwise, fuse search the remainder text
+    return fuse.search(filters.search, { limit: 8 }).map((r) => r.item);
+  }, [fuse, filters.search, inputValue, filteredPlaces]);
 
   // Match query against categories: exact/prefix first, fuzzy fallback
   function matchCategory(query: string): Category | null {
@@ -198,15 +237,37 @@ function SidebarContent({
     return r && r.score !== undefined && r.score <= 0.4 ? r.item.name : null;
   }
 
-  // Smart search: auto-select categories/wards from search tokens
+  // Match query against neighborhoods: exact/prefix first, fuzzy fallback
+  function matchNeighborhood(query: string): string | null {
+    const q = query.toLowerCase();
+    for (const n of neighborhoods) {
+      if (n.toLowerCase() === q) return n;
+    }
+    if (q.length >= 3) {
+      for (const n of neighborhoods) {
+        if (n.toLowerCase().startsWith(q)) return n;
+      }
+    }
+    const r = neighborhoodFuse.search(query, { limit: 1 })[0];
+    return r && r.score !== undefined && r.score <= 0.4 ? r.item.name : null;
+  }
+
+  // Smart search: auto-select categories/wards/neighborhoods from search tokens
   React.useEffect(() => {
     const raw = inputValue.trim();
     const prev = autoFiltersRef.current;
 
     if (!raw) {
-      // Search cleared — remove all auto-selected filters
-      if (prev.categoryIds.length > 0 || prev.wards.length > 0) {
-        autoFiltersRef.current = { categoryIds: [], wards: [] };
+      if (
+        prev.categoryIds.length > 0 ||
+        prev.wards.length > 0 ||
+        prev.neighborhoods.length > 0
+      ) {
+        autoFiltersRef.current = {
+          categoryIds: [],
+          wards: [],
+          neighborhoods: [],
+        };
         onFiltersChange({
           ...filters,
           search: "",
@@ -214,6 +275,9 @@ function SidebarContent({
             (id) => !prev.categoryIds.includes(id),
           ),
           wards: filters.wards.filter((w) => !prev.wards.includes(w)),
+          neighborhoods: filters.neighborhoods.filter(
+            (n) => !prev.neighborhoods.includes(n),
+          ),
         });
       } else if (filters.search !== "") {
         onFiltersChange({ ...filters, search: "" });
@@ -223,6 +287,7 @@ function SidebarContent({
 
     const matchedCatIds: number[] = [];
     const matchedWards: string[] = [];
+    const matchedNeighborhoods: string[] = [];
     const consumed = new Set<number>();
     const tokens = raw.split(/\s+/);
 
@@ -233,12 +298,20 @@ function SidebarContent({
     const fullWard = !fullCat
       ? matchWard(raw) || (noSpaces !== raw ? matchWard(noSpaces) : null)
       : null;
+    const fullNeighborhood =
+      !fullCat && !fullWard
+        ? matchNeighborhood(raw) ||
+          (noSpaces !== raw ? matchNeighborhood(noSpaces) : null)
+        : null;
 
     if (fullCat) {
       matchedCatIds.push(fullCat.id);
       tokens.forEach((_, i) => consumed.add(i));
     } else if (fullWard) {
       matchedWards.push(fullWard);
+      tokens.forEach((_, i) => consumed.add(i));
+    } else if (fullNeighborhood) {
+      matchedNeighborhoods.push(fullNeighborhood);
       tokens.forEach((_, i) => consumed.add(i));
     }
 
@@ -260,11 +333,19 @@ function SidebarContent({
           matchedWards.push(wardMatch);
           consumed.add(i);
           consumed.add(i + 1);
+          continue;
+        }
+        const nhMatch = matchNeighborhood(bigram) || matchNeighborhood(joined);
+        if (nhMatch) {
+          matchedNeighborhoods.push(nhMatch);
+          consumed.add(i);
+          consumed.add(i + 1);
         }
       }
     }
 
     // 3) Try remaining individual tokens (always, not just multi-token)
+    // Priority: category > ward > neighborhood
     for (let i = 0; i < tokens.length; i++) {
       if (consumed.has(i)) continue;
       const catMatch = matchCategory(tokens[i]);
@@ -277,6 +358,12 @@ function SidebarContent({
       if (wardMatch) {
         matchedWards.push(wardMatch);
         consumed.add(i);
+        continue;
+      }
+      const nhMatch = matchNeighborhood(tokens[i]);
+      if (nhMatch) {
+        matchedNeighborhoods.push(nhMatch);
+        consumed.add(i);
       }
     }
 
@@ -286,14 +373,18 @@ function SidebarContent({
     // Check if anything changed
     const prevCatSet = new Set(prev.categoryIds);
     const prevWardSet = new Set(prev.wards);
+    const prevNhSet = new Set(prev.neighborhoods);
     const catsSame =
       matchedCatIds.length === prev.categoryIds.length &&
       matchedCatIds.every((id) => prevCatSet.has(id));
     const wardsSame =
       matchedWards.length === prev.wards.length &&
       matchedWards.every((w) => prevWardSet.has(w));
+    const nhSame =
+      matchedNeighborhoods.length === prev.neighborhoods.length &&
+      matchedNeighborhoods.every((n) => prevNhSet.has(n));
 
-    if (catsSame && wardsSame && filters.search === remainder) return;
+    if (catsSame && wardsSame && nhSame && filters.search === remainder) return;
 
     // Remove old auto-selections, add new ones
     let nextCatIds = filters.categoryIds.filter(
@@ -308,17 +399,27 @@ function SidebarContent({
       if (!nextWards.includes(w)) nextWards = [...nextWards, w];
     }
 
+    let nextNeighborhoods = filters.neighborhoods.filter(
+      (n) => !prev.neighborhoods.includes(n),
+    );
+    for (const n of matchedNeighborhoods) {
+      if (!nextNeighborhoods.includes(n))
+        nextNeighborhoods = [...nextNeighborhoods, n];
+    }
+
     autoFiltersRef.current = {
       categoryIds: matchedCatIds,
       wards: matchedWards,
+      neighborhoods: matchedNeighborhoods,
     };
     onFiltersChange({
       ...filters,
       search: remainder,
       categoryIds: nextCatIds,
       wards: nextWards,
+      neighborhoods: nextNeighborhoods,
     });
-  }, [inputValue, categoryFuse, wardFuse]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [inputValue, categoryFuse, wardFuse, neighborhoodFuse]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close dropdown on outside click
   React.useEffect(() => {
@@ -373,8 +474,8 @@ function SidebarContent({
                 by type (Ramen, Cafes, Landmarks, etc). Pick multiple at once.
               </p>
               <p>
-                <strong>City &amp; Ward</strong> — Narrow results to a specific
-                area using the dropdowns at the bottom.
+                <strong>City, Ward &amp; Neighborhood</strong> — Narrow results
+                to a specific area using the dropdowns at the bottom.
               </p>
               <p>
                 <strong>Map / List</strong> — Switch between the map view with
@@ -394,6 +495,102 @@ function SidebarContent({
         <p className="text-xs text-muted-foreground">
           {placeCount} of {totalCount} places
         </p>
+
+        {/* Active filter chips */}
+        {(filters.categoryIds.length > 0 ||
+          filters.neighborhoods.length > 0 ||
+          filters.wards.length > 0 ||
+          filters.cities.length > 0 ||
+          filters.search) && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {filters.categoryIds.map((catId) => {
+              const cat = categories.find((c) => c.id === catId);
+              if (!cat) return null;
+              return (
+                <Badge
+                  key={`cat-${catId}`}
+                  className="cursor-pointer gap-0.5 pr-1"
+                  style={{
+                    backgroundColor: cat.color,
+                    color: getContrastColor(cat.color),
+                  }}
+                  onClick={() =>
+                    onFiltersChange({
+                      ...filters,
+                      categoryIds: filters.categoryIds.filter(
+                        (id) => id !== catId,
+                      ),
+                    })
+                  }
+                >
+                  {cat.name}
+                  <X className="h-3 w-3" />
+                </Badge>
+              );
+            })}
+            {filters.neighborhoods.map((n) => (
+              <Badge
+                key={`nh-${n}`}
+                variant="secondary"
+                className="cursor-pointer gap-0.5 pr-1"
+                onClick={() =>
+                  onFiltersChange({
+                    ...filters,
+                    neighborhoods: filters.neighborhoods.filter((x) => x !== n),
+                  })
+                }
+              >
+                {n}
+                <X className="h-3 w-3" />
+              </Badge>
+            ))}
+            {filters.wards.map((w) => (
+              <Badge
+                key={`ward-${w}`}
+                variant="secondary"
+                className="cursor-pointer gap-0.5 pr-1"
+                onClick={() =>
+                  onFiltersChange({
+                    ...filters,
+                    wards: filters.wards.filter((x) => x !== w),
+                  })
+                }
+              >
+                {w}
+                <X className="h-3 w-3" />
+              </Badge>
+            ))}
+            {filters.cities.map((c) => (
+              <Badge
+                key={`city-${c}`}
+                variant="secondary"
+                className="cursor-pointer gap-0.5 pr-1"
+                onClick={() =>
+                  onFiltersChange({
+                    ...filters,
+                    cities: filters.cities.filter((x) => x !== c),
+                  })
+                }
+              >
+                {c}
+                <X className="h-3 w-3" />
+              </Badge>
+            ))}
+            {filters.search && (
+              <Badge
+                variant="outline"
+                className="cursor-pointer gap-0.5 pr-1"
+                onClick={() => {
+                  onFiltersChange({ ...filters, search: "" });
+                  setInputValue("");
+                }}
+              >
+                &quot;{filters.search}&quot;
+                <X className="h-3 w-3" />
+              </Badge>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
@@ -511,24 +708,34 @@ function SidebarContent({
 
         <Separator />
 
-        {/* Visited filter */}
+        {/* Quick neighborhood picks */}
         <div className="space-y-2">
-          <p className="text-sm font-medium">Status</p>
-          <div className="flex gap-1.5">
-            {(["all", "true", "false"] as const).map((val) => (
-              <Button
-                key={val}
-                variant={filters.visited === val ? "default" : "outline"}
-                size="sm"
-                onClick={() => onFiltersChange({ ...filters, visited: val })}
-              >
-                {val === "all"
-                  ? "All"
-                  : val === "true"
-                    ? "Visited"
-                    : "Unvisited"}
-              </Button>
-            ))}
+          <p className="text-sm font-medium">Popular Areas</p>
+          <div className="flex flex-wrap gap-1.5">
+            {POPULAR_NEIGHBORHOODS.filter((n) => neighborhoods.includes(n)).map(
+              (name) => {
+                const isActive = filters.neighborhoods.includes(name);
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => {
+                      const next = isActive
+                        ? filters.neighborhoods.filter((n) => n !== name)
+                        : [...filters.neighborhoods, name];
+                      onFiltersChange({ ...filters, neighborhoods: next });
+                    }}
+                  >
+                    <Badge
+                      variant={isActive ? "default" : "outline"}
+                      className="cursor-pointer"
+                    >
+                      {name}
+                    </Badge>
+                  </button>
+                );
+              },
+            )}
           </div>
         </div>
 
@@ -536,14 +743,17 @@ function SidebarContent({
 
         {/* Location filters */}
         <div className="space-y-2">
-          <p className="text-sm font-medium">City</p>
+          <p className="text-sm font-medium">Neighborhood</p>
           <MultiSelectLocation
-            items={cities}
-            value={filters.cities}
+            items={neighborhoods}
+            value={filters.neighborhoods}
             onValueChange={(val) =>
-              onFiltersChange({ ...filters, cities: val as string[] })
+              onFiltersChange({
+                ...filters,
+                neighborhoods: val as string[],
+              })
             }
-            placeholder="Filter by city..."
+            placeholder="Asakusa, Akihabara, Harajuku..."
           />
         </div>
 
@@ -557,7 +767,21 @@ function SidebarContent({
             onValueChange={(val) =>
               onFiltersChange({ ...filters, wards: val as string[] })
             }
-            placeholder="Filter by ward..."
+            placeholder="Shibuya, Shinjuku, Taito..."
+          />
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium">City</p>
+          <MultiSelectLocation
+            items={cities}
+            value={filters.cities}
+            onValueChange={(val) =>
+              onFiltersChange({ ...filters, cities: val as string[] })
+            }
+            placeholder="Tokyo, Kyoto, Osaka..."
           />
         </div>
       </div>

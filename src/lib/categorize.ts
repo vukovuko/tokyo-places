@@ -21,6 +21,7 @@ export interface CategorizationResult {
   categories: string[];
   city: string | null;
   ward: string | null;
+  neighborhood: string | null;
   newCategories: NewCategory[];
 }
 
@@ -42,6 +43,9 @@ Rules:
 - Extract ward/district if present (e.g. "Shibuya", "Shinjuku", "Taito", "Chuo", "Minato")
 - For wards: strip "City" or "区" suffix — just the name (e.g. "Shibuya City" → "Shibuya")
 - If you cannot determine city/ward, use null
+- Extract neighborhood/area if present (e.g. "Asakusa", "Akihabara", "Harajuku", "Roppongi", "Ginza", "Odaiba", "Shimokitazawa", "Ueno", "Ikebukuro")
+- Neighborhoods are well-known sub-areas WITHIN wards — do NOT repeat the ward name as neighborhood
+- If you cannot determine neighborhood, use null
 - Respond with JSON array ONLY — no markdown fences, no explanation`;
 
 export async function categorizeBatch(
@@ -62,7 +66,7 @@ Places:
 ${placeLines}
 
 Respond with JSON array ONLY:
-[{"i":1,"categories":["slug"],"city":"Tokyo","ward":"Shibuya","newCategories":[]}]`;
+[{"i":1,"categories":["slug"],"city":"Tokyo","ward":"Shibuya","neighborhood":"Harajuku","newCategories":[]}]`;
 
   const response = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
@@ -84,6 +88,7 @@ Respond with JSON array ONLY:
     categories: string[];
     city?: string | null;
     ward?: string | null;
+    neighborhood?: string | null;
     newCategories?: NewCategory[];
   }>;
 
@@ -92,6 +97,7 @@ Respond with JSON array ONLY:
     categories: item.categories,
     city: item.city ?? null,
     ward: item.ward ?? null,
+    neighborhood: item.neighborhood ?? null,
     newCategories: item.newCategories ?? [],
   }));
 }

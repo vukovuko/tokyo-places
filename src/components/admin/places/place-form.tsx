@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/combobox";
 import { PageHeader } from "@/components/admin/page-header";
 import { PhotoCarousel } from "@/components/photo-carousel";
+import { ReviewsSection } from "@/components/reviews-section";
 import { SOURCE_OPTIONS } from "@/lib/constants";
 import { getContrastColor } from "@/lib/utils";
 import { Star, MapPin, ExternalLink, RefreshCw } from "lucide-react";
@@ -58,14 +59,23 @@ interface PlaceFormProps {
     googlePlaceId: string | null;
     notes: string | null;
     visited: boolean;
-    rating: number | null;
     source: string | null;
     city: string | null;
     ward: string | null;
+    neighborhood: string | null;
     googlePhotoRef: string | null;
     googlePhotoRefs: string[] | null;
     openingHours: OpeningHoursData | null;
     businessStatus: string | null;
+    googleRating: number | null;
+    googleReviewCount: number | null;
+    googleReviews: Array<{
+      authorName: string;
+      rating: number;
+      text: string;
+      relativeTime: string;
+      publishTime: string;
+    }> | null;
     categoryIds: number[];
   };
 }
@@ -83,9 +93,6 @@ export function PlaceForm({
   const [visited, setVisited] = useState(defaultValues?.visited ?? false);
   const [selectedCategories, setSelectedCategories] = useState<number[]>(
     defaultValues?.categoryIds ?? [],
-  );
-  const [selectedRating, setSelectedRating] = useState(
-    defaultValues?.rating ? String(defaultValues.rating) : "",
   );
   const [selectedSource, setSelectedSource] = useState(
     defaultValues?.source || "manual",
@@ -127,10 +134,10 @@ export function PlaceForm({
     notes: defaultValues?.notes ?? "",
     visited: defaultValues?.visited ?? false,
     categories: [...(defaultValues?.categoryIds ?? [])].sort(),
-    rating: defaultValues?.rating ? String(defaultValues.rating) : "",
     source: defaultValues?.source || "manual",
     city: defaultValues?.city ?? "",
     ward: defaultValues?.ward ?? "",
+    neighborhood: defaultValues?.neighborhood ?? "",
   });
 
   const checkDirty = useCallback(() => {
@@ -151,13 +158,13 @@ export function PlaceForm({
       getVal("notes") !== init.notes ||
       getVal("city") !== init.city ||
       getVal("ward") !== init.ward ||
+      getVal("neighborhood") !== init.neighborhood ||
       visited !== init.visited ||
-      selectedRating !== init.rating ||
       selectedSource !== init.source ||
       JSON.stringify([...selectedCategories].sort()) !==
         JSON.stringify(init.categories);
     setIsDirty(dirty);
-  }, [isEdit, visited, selectedCategories, selectedRating, selectedSource]);
+  }, [isEdit, visited, selectedCategories, selectedSource]);
 
   useEffect(() => {
     checkDirty();
@@ -194,7 +201,6 @@ export function PlaceForm({
         <div className="mx-auto max-w-3xl space-y-6">
           {/* Hidden fields for non-standard inputs */}
           <input type="hidden" name="visited" value={String(visited)} />
-          <input type="hidden" name="rating" value={selectedRating} />
           <input type="hidden" name="source" value={selectedSource} />
           {selectedCategories.map((catId) => (
             <input key={catId} type="hidden" name="categoryIds" value={catId} />
@@ -290,6 +296,29 @@ export function PlaceForm({
               );
             })()}
 
+          {/* Google Rating (read-only) */}
+          {isEdit && defaultValues?.googleRating != null && (
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+              <span className="font-medium text-foreground">
+                {defaultValues.googleRating}
+              </span>
+              {defaultValues.googleReviewCount != null && (
+                <span>
+                  ({defaultValues.googleReviewCount.toLocaleString()} reviews)
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Google Reviews (read-only) */}
+          {isEdit && (
+            <ReviewsSection
+              reviews={defaultValues?.googleReviews}
+              placeName={defaultValues?.title}
+            />
+          )}
+
           {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
@@ -313,8 +342,8 @@ export function PlaceForm({
             />
           </div>
 
-          {/* City / Ward */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* City / Ward / Neighborhood */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="city">City</Label>
               <Input
@@ -331,6 +360,15 @@ export function PlaceForm({
                 name="ward"
                 placeholder="e.g. Shibuya"
                 defaultValue={defaultValues?.ward ?? ""}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="neighborhood">Neighborhood</Label>
+              <Input
+                id="neighborhood"
+                name="neighborhood"
+                placeholder="e.g. Harajuku"
+                defaultValue={defaultValues?.neighborhood ?? ""}
               />
             </div>
           </div>
@@ -413,42 +451,14 @@ export function PlaceForm({
             />
           </div>
 
-          {/* Visited + Rating row */}
-          <div className="flex items-start gap-8">
-            <div className="flex items-center gap-3">
-              <Label htmlFor="visited-switch">Visited</Label>
-              <Switch
-                id="visited-switch"
-                checked={visited}
-                onCheckedChange={setVisited}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Rating</Label>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() =>
-                      setSelectedRating(
-                        selectedRating === String(n) ? "" : String(n),
-                      )
-                    }
-                    className="p-0.5"
-                  >
-                    <Star
-                      className={`h-5 w-5 ${
-                        Number(selectedRating) >= n
-                          ? "fill-amber-400 text-amber-400"
-                          : "text-muted-foreground"
-                      }`}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* Visited */}
+          <div className="flex items-center gap-3">
+            <Label htmlFor="visited-switch">Visited</Label>
+            <Switch
+              id="visited-switch"
+              checked={visited}
+              onCheckedChange={setVisited}
+            />
           </div>
 
           {/* Source */}

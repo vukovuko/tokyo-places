@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -33,6 +33,15 @@ export function PhotoCarousel({
   const handleImageError = useCallback((ref: string) => {
     setFailedRefs((prev) => new Set(prev).add(ref));
   }, []);
+
+  // Reset to first slide when photos change (different place selected)
+  const refsKey = photoRefs?.join(",") ?? "";
+  useEffect(() => {
+    setActiveIndex(0);
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = 0;
+    }
+  }, [refsKey]);
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   if (!photoRefs || photoRefs.length === 0 || !apiKey) return null;

@@ -27,12 +27,14 @@ interface PlacesToolbarProps {
   categories: Category[];
   cities: string[];
   wards: string[];
+  neighborhoods: string[];
 }
 
 export function PlacesToolbar({
   categories,
   cities,
   wards,
+  neighborhoods,
 }: PlacesToolbarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -61,12 +63,14 @@ export function PlacesToolbar({
   const currentCategories = searchParams.getAll("category");
   const currentCity = searchParams.get("city") || "";
   const currentWard = searchParams.get("ward") || "";
+  const currentNeighborhood = searchParams.get("neighborhood") || "";
   const currentSearch = searchParams.get("search") || "";
   const hasFilters =
     currentVisited !== "all" ||
     currentCategories.length > 0 ||
     currentCity ||
     currentWard ||
+    currentNeighborhood ||
     currentSearch;
 
   function toggleCategory(catId: number) {
@@ -197,6 +201,37 @@ export function PlacesToolbar({
                     return (
                       <ComboboxItem key="all" value="">
                         All Wards
+                      </ComboboxItem>
+                    );
+                  }
+                  return (
+                    <ComboboxItem key={value} value={value}>
+                      {value}
+                    </ComboboxItem>
+                  );
+                }}
+              </ComboboxList>
+            </ComboboxContent>
+          </Combobox>
+        </div>
+
+        {/* Neighborhood filter */}
+        <div className="w-40">
+          <Combobox
+            items={["", ...neighborhoods]}
+            value={currentNeighborhood}
+            onValueChange={(val) =>
+              updateParams({ neighborhood: (val as string) || undefined })
+            }
+          >
+            <ComboboxInput placeholder="Neighborhood" showClear />
+            <ComboboxContent>
+              <ComboboxList>
+                {(value) => {
+                  if (value === "") {
+                    return (
+                      <ComboboxItem key="all" value="">
+                        All Neighborhoods
                       </ComboboxItem>
                     );
                   }

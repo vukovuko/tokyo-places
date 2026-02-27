@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { PhotoCarousel } from "@/components/photo-carousel";
 import {
   X,
@@ -20,41 +19,83 @@ import {
 import { getContrastColor } from "@/lib/utils";
 import { OpenClosedBadge } from "@/components/open-closed-badge";
 import { getTodayHours, formatWeekdayHours } from "@/lib/opening-hours";
+import { ReviewsSection } from "@/components/reviews-section";
+import { toggleVisited } from "@/app/admin/places/actions";
 import type { Place } from "./explorer";
 
 interface PlaceDetailDrawerProps {
   place: Place;
   onClose: () => void;
   onShowOnMap?: () => void;
+  isAdmin?: boolean;
 }
 
 export function PlaceDetailDrawer({
   place,
   onClose,
   onShowOnMap,
+  isAdmin,
 }: PlaceDetailDrawerProps) {
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [optimisticVisited, setOptimisticVisited] = useState(place.visited);
+  const [isToggling, startToggle] = useTransition();
+
+  // Reset when a different place is opened
+  useEffect(() => {
+    setOptimisticVisited(place.visited);
+  }, [place.id, place.visited]);
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`;
 
   return (
-    <div className="fixed inset-y-0 right-0 z-20 w-full max-w-sm border-l bg-background shadow-lg overflow-y-auto animate-in slide-in-from-right duration-200">
-      {/* Header */}
-      <div className="flex items-start justify-between p-4">
-        <div className="flex-1">
-          <h2 className="text-lg font-semibold">{place.title}</h2>
-          {place.address && (
-            <p className="mt-1 flex items-start gap-1 text-sm text-muted-foreground">
-              <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
-              {place.address}
-            </p>
-          )}
-          <OpenClosedBadge
-            openingHours={place.openingHours}
-            businessStatus={place.businessStatus}
-          />
+    <div className="fixed inset-y-0 right-0 z-20 w-full max-w-sm border-l bg-background shadow-lg flex flex-col animate-in slide-in-from-right duration-200">
+      <div className="flex-1 overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-start justify-between p-4">
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold">{place.title}</h2>
+            {place.address && (
+              <p className="mt-1 flex items-start gap-1 text-sm text-muted-foreground">
+                <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
+                {place.address}
+              </p>
+            )}
+            <OpenClosedBadge
+              openingHours={place.openingHours}
+              businessStatus={place.businessStatus}
+            />
+          </div>
+          <Button variant="ghost" size="icon-xs" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Place photos */}
+        <PhotoCarousel
+          photoRefs={place.googlePhotoRefs}
+          alt={place.title}
+          className="mx-4 h-48"
+        />
+
+        <div className="space-y-4 p-4">
+          {/* Categories */}
+          <div className="flex flex-wrap gap-1.5">
+            {place.placeCategories.map((pc) => (
+              <Badge
+                key={pc.categoryId}
+                style={{
+                  backgroundColor: pc.category.color,
+                  color: getContrastColor(pc.category.color),
+                }}
+              >
+                {pc.category.name}
+              </Badge>
+            ))}
+          </div>
+
+          {/* Rating + Reviews */}
           {place.googleRating != null && (
-            <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+            <p className="flex items-center gap-1 text-sm text-muted-foreground">
               <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
               {place.googleRating}
               {place.googleReviewCount != null && (
@@ -64,123 +105,122 @@ export function PlaceDetailDrawer({
               )}
             </p>
           )}
-        </div>
-        <Button variant="ghost" size="icon-xs" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
+          <ReviewsSection
+            reviews={place.googleReviews}
+            placeName={place.title}
+          />
 
-      {/* Place photos */}
-      <PhotoCarousel
-        photoRefs={place.googlePhotoRefs}
-        alt={place.title}
-        className="mx-4 h-48"
-      />
+          {/* Opening hours — collapsible */}
+          {place.openingHours?.periods &&
+            (() => {
+              const todayHours = getTodayHours(place.openingHours);
+              const allHours = formatWeekdayHours(place.openingHours);
 
-      <div className="space-y-4 p-4">
-        {/* Categories */}
-        <div className="flex flex-wrap gap-1.5">
-          {place.placeCategories.map((pc) => (
-            <Badge
-              key={pc.categoryId}
-              style={{
-                backgroundColor: pc.category.color,
-                color: getContrastColor(pc.category.color),
-              }}
-            >
-              {pc.category.name}
-            </Badge>
-          ))}
-        </div>
-
-        {/* Opening hours — collapsible */}
-        {place.openingHours?.periods &&
-          (() => {
-            const todayHours = getTodayHours(place.openingHours);
-            const allHours = formatWeekdayHours(place.openingHours);
-
-            return (
-              <div>
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between text-left"
-                  onClick={() => setHoursExpanded((v) => !v)}
-                >
-                  <span className="text-sm text-muted-foreground">
-                    {todayHours || "Hours"}
-                  </span>
-                  {allHours &&
-                    (hoursExpanded ? (
-                      <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                    ))}
-                </button>
-                {hoursExpanded && allHours && (
-                  <div className="mt-2 space-y-0.5">
-                    {allHours.map((line, i) => (
-                      <p key={i} className="text-sm text-muted-foreground">
-                        {line}
+              return (
+                <div>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between text-left"
+                    onClick={() => setHoursExpanded((v) => !v)}
+                  >
+                    <span className="text-sm text-muted-foreground">
+                      {todayHours || "Hours"}
+                    </span>
+                    {allHours &&
+                      (hoursExpanded ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                      ))}
+                  </button>
+                  {hoursExpanded && allHours && (
+                    <div className="mt-2 space-y-0.5">
+                      {allHours.map((line, i) => (
+                        <p key={i} className="text-sm text-muted-foreground">
+                          {line}
+                        </p>
+                      ))}
+                      <p className="mt-1 text-xs text-muted-foreground/60 italic">
+                        Hours may vary on holidays
                       </p>
-                    ))}
-                    <p className="mt-1 text-xs text-muted-foreground/60 italic">
-                      Hours may vary on holidays
-                    </p>
-                  </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+          {/* Status row */}
+          <div className="flex items-center gap-4">
+            {isAdmin ? (
+              <button
+                type="button"
+                disabled={isToggling}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 -mx-2 -my-1 transition-colors hover:bg-accent disabled:opacity-50"
+                onClick={() => {
+                  const next = !optimisticVisited;
+                  setOptimisticVisited(next);
+                  startToggle(async () => {
+                    try {
+                      await toggleVisited(place.id, next);
+                    } catch {
+                      setOptimisticVisited(!next);
+                    }
+                  });
+                }}
+              >
+                {optimisticVisited ? (
+                  <>
+                    <Check className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-600">
+                      Visited
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    Not visited
+                  </span>
+                )}
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                {optimisticVisited ? (
+                  <>
+                    <Check className="h-4 w-4 text-green-600" />
+                    <span className="text-sm">Visited</span>
+                  </>
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    Not visited
+                  </span>
                 )}
               </div>
-            );
-          })()}
-
-        {/* Status row */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            {place.visited ? (
-              <>
-                <Check className="h-4 w-4 text-green-600" />
-                <span className="text-sm">Visited</span>
-              </>
-            ) : (
-              <span className="text-sm text-muted-foreground">Not visited</span>
             )}
           </div>
-          {place.rating && (
-            <div className="flex items-center gap-1">
-              {Array.from({ length: 5 }, (_, i) => (
-                <Star
-                  key={i}
-                  className={`h-4 w-4 ${
-                    i < place.rating!
-                      ? "fill-amber-400 text-amber-400"
-                      : "text-muted-foreground"
-                  }`}
-                />
-              ))}
+
+          {/* Description */}
+          {place.description && (
+            <div>
+              <p className="text-sm font-medium mb-1">Description</p>
+              <p className="text-sm text-muted-foreground">
+                {place.description}
+              </p>
+            </div>
+          )}
+
+          {/* Notes */}
+          {place.notes && (
+            <div>
+              <p className="text-sm font-medium mb-1">Notes</p>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {place.notes}
+              </p>
             </div>
           )}
         </div>
+      </div>
 
-        {/* Description */}
-        {place.description && (
-          <div>
-            <p className="text-sm font-medium mb-1">Description</p>
-            <p className="text-sm text-muted-foreground">{place.description}</p>
-          </div>
-        )}
-
-        {/* Notes */}
-        {place.notes && (
-          <div>
-            <p className="text-sm font-medium mb-1">Notes</p>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {place.notes}
-            </p>
-          </div>
-        )}
-
-        <Separator />
-
-        {/* Action buttons */}
+      {/* Action buttons — sticky bottom */}
+      <div className="shrink-0 border-t bg-background p-3">
         <div className="grid grid-cols-2 gap-2">
           {onShowOnMap && (
             <Button

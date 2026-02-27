@@ -20,6 +20,7 @@ function sleep(ms: number) {
 }
 
 async function main() {
+  const isFresh = process.argv.includes("--fresh");
   const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
   const db = drizzle(pool, { schema });
 
@@ -27,10 +28,24 @@ async function main() {
 
   console.log("=== Phase 1: Google Places Import ===\n");
 
-  // Wipe existing data
-  await db.delete(schema.placeCategories);
-  await db.delete(schema.places);
-  console.log("Cleared existing places.\n");
+  if (isFresh) {
+    console.log("--fresh flag: wiping existing data...");
+    await db.delete(schema.placeCategories);
+    await db.delete(schema.places);
+    console.log("Cleared existing places.\n");
+  }
+
+  // Build a set of existing place titles for duplicate detection
+  const existingPlaces = await db.query.places.findMany({
+    columns: { id: true, title: true, googlePlaceId: true },
+  });
+  const existingTitles = new Set(
+    existingPlaces.map((p) => p.title.toLowerCase()),
+  );
+  const existingGoogleIds = new Set(
+    existingPlaces.filter((p) => p.googlePlaceId).map((p) => p.googlePlaceId!),
+  );
+  console.log(`${existingPlaces.length} places already in database\n`);
 
   // Read and parse CSV
   const csvPath = path.resolve(__dirname, "../../public/i_want_to_visit.csv");
@@ -46,6 +61,7 @@ async function main() {
   console.log(`Found ${dataRows.length} places in CSV\n`);
 
   let imported = 0;
+  let skipped = 0;
   let failed = 0;
   const failedRows: string[][] = [];
   // Track imported places for Phase 2
@@ -60,6 +76,17 @@ async function main() {
 
     if (!title) continue;
 
+    // Skip duplicates (by title match)
+    if (existingTitles.has(title.toLowerCase())) {
+      skipped++;
+      if ((i + 1) % 100 === 0 || i === dataRows.length - 1) {
+        console.log(
+          `[${i + 1}/${dataRows.length}] Imported: ${imported} | Skipped: ${skipped} | Failed: ${failed}`,
+        );
+      }
+      continue;
+    }
+
     try {
       const place = await searchPlace(title);
 
@@ -67,6 +94,14 @@ async function main() {
         console.warn(`  No results for: "${title}"`);
         failed++;
         failedRows.push(row);
+        await sleep(DELAY_MS);
+        continue;
+      }
+
+      // Also skip if Google Place ID already exists
+      if (place.id && existingGoogleIds.has(place.id)) {
+        skipped++;
+        existingTitles.add(title.toLowerCase());
         await sleep(DELAY_MS);
         continue;
       }
@@ -105,6 +140,10 @@ async function main() {
         types: place.types || [],
       });
 
+      // Track the new place so we don't re-import if CSV has duplicates
+      existingTitles.add(title.toLowerCase());
+      if (place.id) existingGoogleIds.add(place.id);
+
       imported++;
     } catch (err) {
       console.error(`  Error for "${title}":`, err);
@@ -114,14 +153,16 @@ async function main() {
 
     if ((i + 1) % 50 === 0 || i === dataRows.length - 1) {
       console.log(
-        `[${i + 1}/${dataRows.length}] Imported: ${imported} | Failed: ${failed}`,
+        `[${i + 1}/${dataRows.length}] Imported: ${imported} | Skipped: ${skipped} | Failed: ${failed}`,
       );
     }
 
     await sleep(DELAY_MS);
   }
 
-  console.log(`\nPhase 1 complete: ${imported} imported, ${failed} failed\n`);
+  console.log(
+    `\nPhase 1 complete: ${imported} new, ${skipped} skipped (existing), ${failed} failed\n`,
+  );
 
   if (failedRows.length > 0) {
     const header = "Назив,Белешка,URL адреса,Ознаке,Коментар";
@@ -134,12 +175,12 @@ async function main() {
     console.log(`Failed places written to: ${outPath}\n`);
   }
 
-  // ── Phase 2: AI categorization ─────────────────────────────────────
+  // ── Phase 2: AI categorization (only for NEW places) ────────────────
 
   console.log("=== Phase 2: AI Categorization ===\n");
 
   if (importedPlaces.length === 0) {
-    console.log("No places to categorize.");
+    console.log("No new places to categorize.");
     await pool.end();
     return;
   }
@@ -204,13 +245,14 @@ async function main() {
           }
         }
 
-        // Update city/ward
-        if (result.city || result.ward) {
+        // Update city/ward/neighborhood
+        if (result.city || result.ward || result.neighborhood) {
           await db
             .update(schema.places)
             .set({
               city: result.city,
               ward: result.ward,
+              neighborhood: result.neighborhood,
             })
             .where(eq(schema.places.id, place.dbId));
         }
@@ -228,6 +270,7 @@ async function main() {
 
   console.log("\n=== Import Complete ===");
   console.log(`Places imported:      ${imported}`);
+  console.log(`Places skipped:       ${skipped}`);
   console.log(`Places failed:        ${failed}`);
   console.log(`Places categorized:   ${categorized}`);
   console.log(`New categories:       ${newCategoriesCreated}`);

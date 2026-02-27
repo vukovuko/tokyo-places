@@ -16,6 +16,9 @@
     "db:import": "tsx --env-file=.env src/db/import-places.ts",
     "db:fix-imports": "tsx --env-file=.env src/db/fix-failed-imports.ts",
     "db:backfill-hours": "tsx --env-file=.env src/db/backfill-opening-hours.ts",
+    "db:backfill-neighborhoods": "tsx --env-file=.env src/db/backfill-neighborhoods.ts",
+    "db:sync": "npm run db:push && npm run db:seed:categories && npm run db:import && npm run db:backfill-hours",
+    "db:sync:fresh": "npm run db:push && npm run db:seed:categories && npm run db:import -- --fresh && npm run db:backfill-hours && npm run db:backfill-neighborhoods",
     "db:studio": "drizzle-kit studio",
     "prepare": "husky"
   },

@@ -23,6 +23,14 @@ interface ExplorerMapProps {
   userHeading: number | null;
   locationError: string | null;
   panTarget: { lat: number; lng: number; key: number } | null;
+  fitBounds: {
+    south: number;
+    west: number;
+    north: number;
+    east: number;
+    key: number;
+  } | null;
+  resetMapKey: number;
 }
 
 function UserLocationDot({ heading }: { heading: number | null }) {
@@ -104,10 +112,42 @@ function PanToTarget({
   return null;
 }
 
+function FitToBounds({
+  bounds,
+  resetKey,
+}: {
+  bounds: ExplorerMapProps["fitBounds"];
+  resetKey: number;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || !bounds) return;
+    map.fitBounds(
+      {
+        south: bounds.south,
+        west: bounds.west,
+        north: bounds.north,
+        east: bounds.east,
+      },
+      60,
+    );
+  }, [map, bounds]);
+
+  useEffect(() => {
+    if (!map || resetKey === 0) return;
+    map.panTo({ lat: 35.6762, lng: 139.6503 });
+    map.setZoom(12);
+  }, [map, resetKey]);
+
+  return null;
+}
+
 interface PointProperties {
   cluster: false;
   placeId: number;
   color: string;
+  label: string;
   title: string;
   selected: boolean;
 }
@@ -167,6 +207,7 @@ function ClusteredMarkers({
             cluster: false as const,
             placeId: p.id,
             color: p.placeCategories[0]?.category?.color || "#6b7280",
+            label: p.placeCategories[0]?.category?.name || "",
             title: p.title,
             selected: p.id === selectedPlaceId,
           },
@@ -198,6 +239,7 @@ function ClusteredMarkers({
         {places.map((place) => {
           if (!place.latitude || !place.longitude) return null;
           const color = place.placeCategories[0]?.category?.color || "#6b7280";
+          const label = place.placeCategories[0]?.category?.name || "";
           return (
             <AdvancedMarker
               key={place.id}
@@ -205,7 +247,11 @@ function ClusteredMarkers({
               onClick={() => onPlaceSelect(place.id)}
               title={place.title}
             >
-              <MapPin color={color} selected={place.id === selectedPlaceId} />
+              <MapPin
+                color={color}
+                selected={place.id === selectedPlaceId}
+                label={label}
+              />
             </AdvancedMarker>
           );
         })}
@@ -239,7 +285,7 @@ function ClusteredMarkers({
           );
         }
 
-        const { placeId, color, title, selected } = props;
+        const { placeId, color, label, title, selected } = props;
         return (
           <AdvancedMarker
             key={`place-${placeId}`}
@@ -247,7 +293,7 @@ function ClusteredMarkers({
             onClick={() => onPlaceSelect(placeId)}
             title={title}
           >
-            <MapPin color={color} selected={selected} />
+            <MapPin color={color} selected={selected} label={label} />
           </AdvancedMarker>
         );
       })}
@@ -263,6 +309,8 @@ export function ExplorerMap({
   userHeading: heading,
   locationError: error,
   panTarget,
+  fitBounds,
+  resetMapKey,
 }: ExplorerMapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -293,6 +341,7 @@ export function ExplorerMap({
         mapTypeControl={false}
       >
         <PanToTarget panTarget={panTarget} />
+        <FitToBounds bounds={fitBounds} resetKey={resetMapKey} />
 
         {/* User location */}
         {userPos && (

@@ -23,6 +23,7 @@ interface GetPlacesOptions {
   source?: string;
   city?: string;
   ward?: string;
+  neighborhood?: string;
   sort?: string;
   order?: "asc" | "desc";
   page?: number;
@@ -37,6 +38,7 @@ export async function getPlaces(options: GetPlacesOptions = {}) {
     source,
     city,
     ward,
+    neighborhood,
     sort = "createdAt",
     order = "desc",
     page = 1,
@@ -68,6 +70,10 @@ export async function getPlaces(options: GetPlacesOptions = {}) {
 
   if (ward) {
     conditions.push(eq(places.ward, ward));
+  }
+
+  if (neighborhood) {
+    conditions.push(eq(places.neighborhood, neighborhood));
   }
 
   if (categoryIds.length > 0) {
@@ -139,9 +145,16 @@ export async function getDistinctCitiesAndWards() {
     .where(isNotNull(places.ward))
     .orderBy(asc(places.ward));
 
+  const neighborhoods = await db
+    .selectDistinct({ neighborhood: places.neighborhood })
+    .from(places)
+    .where(isNotNull(places.neighborhood))
+    .orderBy(asc(places.neighborhood));
+
   return {
     cities: cities.map((r) => r.city!),
     wards: wards.map((r) => r.ward!),
+    neighborhoods: neighborhoods.map((r) => r.neighborhood!),
   };
 }
 
@@ -164,8 +177,10 @@ export async function getAllPlacesForMap() {
       businessStatus: true,
       googleRating: true,
       googleReviewCount: true,
+      googleReviews: true,
       city: true,
       ward: true,
+      neighborhood: true,
     },
     with: {
       placeCategories: {

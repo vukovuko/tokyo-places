@@ -9,6 +9,7 @@ export interface ParsedSearchParams {
   source: string | undefined;
   city: string | undefined;
   ward: string | undefined;
+  neighborhood: string | undefined;
 }
 
 export function parseSearchParams(
@@ -25,6 +26,7 @@ export function parseSearchParams(
     source: searchParams.source as string | undefined,
     city: searchParams.city as string | undefined,
     ward: searchParams.ward as string | undefined,
+    neighborhood: searchParams.neighborhood as string | undefined,
   };
 }
 
@@ -75,6 +77,10 @@ export function buildSearchParams(
   if (params.ward !== undefined) {
     if (params.ward === "") newParams.delete("ward");
     else newParams.set("ward", params.ward);
+  }
+  if (params.neighborhood !== undefined) {
+    if (params.neighborhood === "") newParams.delete("neighborhood");
+    else newParams.set("neighborhood", params.neighborhood);
   }
 
   return newParams;

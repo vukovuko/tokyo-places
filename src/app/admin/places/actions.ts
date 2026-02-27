@@ -31,11 +31,10 @@ export async function createPlace(
   const googlePlaceId = (formData.get("googlePlaceId") as string) || null;
   const notes = (formData.get("notes") as string) || null;
   const visited = formData.get("visited") === "true";
-  const ratingStr = formData.get("rating") as string;
-  const rating = ratingStr ? Number(ratingStr) : null;
   const source = (formData.get("source") as string) || "manual";
   const city = (formData.get("city") as string) || null;
   const ward = (formData.get("ward") as string) || null;
+  const neighborhood = (formData.get("neighborhood") as string) || null;
   const categoryIds = formData.getAll("categoryIds").map(Number);
 
   if (!title) return { error: "Title is required" };
@@ -55,10 +54,10 @@ export async function createPlace(
       googlePlaceId,
       notes,
       visited,
-      rating,
       source,
       city,
       ward,
+      neighborhood,
     })
     .returning();
 
@@ -91,10 +90,9 @@ export async function updatePlace(
   const googlePlaceId = (formData.get("googlePlaceId") as string) || null;
   const notes = (formData.get("notes") as string) || null;
   const visited = formData.get("visited") === "true";
-  const ratingStr = formData.get("rating") as string;
-  const rating = ratingStr ? Number(ratingStr) : null;
   const city = (formData.get("city") as string) || null;
   const ward = (formData.get("ward") as string) || null;
+  const neighborhood = (formData.get("neighborhood") as string) || null;
   const categoryIds = formData.getAll("categoryIds").map(Number);
 
   if (!title) return { error: "Title is required" };
@@ -114,9 +112,9 @@ export async function updatePlace(
       googlePlaceId,
       notes,
       visited,
-      rating,
       city,
       ward,
+      neighborhood,
       updatedAt: new Date(),
     })
     .where(eq(places.id, id));
@@ -178,6 +176,16 @@ export async function bulkSetVisited(placeIds: number[], visited: boolean) {
   revalidatePath("/admin/places");
 }
 
+export async function toggleVisited(placeId: number, visited: boolean) {
+  await requireAdmin();
+  await db
+    .update(places)
+    .set({ visited, updatedAt: new Date() })
+    .where(eq(places.id, placeId));
+  revalidatePath("/admin/places");
+  revalidatePath("/");
+}
+
 export async function refreshFromGoogle(placeId: number) {
   await requireAdmin();
 
@@ -217,6 +225,16 @@ export async function refreshFromGoogle(placeId: number) {
   if (details.rating != null) updateData.googleRating = details.rating;
   if (details.userRatingCount != null)
     updateData.googleReviewCount = details.userRatingCount;
+
+  if (details.reviews?.length) {
+    updateData.googleReviews = details.reviews.map((r) => ({
+      authorName: r.authorAttribution.displayName,
+      rating: r.rating,
+      text: r.text?.text || r.originalText?.text || "",
+      relativeTime: r.relativePublishTimeDescription,
+      publishTime: r.publishTime,
+    }));
+  }
 
   await db.update(places).set(updateData).where(eq(places.id, placeId));
   revalidatePath("/admin/places");
@@ -262,6 +280,16 @@ export async function bulkRefreshFromGoogle(placeIds: number[]) {
       if (details.rating != null) updateData.googleRating = details.rating;
       if (details.userRatingCount != null)
         updateData.googleReviewCount = details.userRatingCount;
+
+      if (details.reviews?.length) {
+        updateData.googleReviews = details.reviews.map((r) => ({
+          authorName: r.authorAttribution.displayName,
+          rating: r.rating,
+          text: r.text?.text || r.originalText?.text || "",
+          relativeTime: r.relativePublishTimeDescription,
+          publishTime: r.publishTime,
+        }));
+      }
 
       await db.update(places).set(updateData).where(eq(places.id, place.id));
       updated++;
