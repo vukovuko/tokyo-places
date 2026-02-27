@@ -162,6 +162,8 @@ export async function getAllPlacesForMap() {
       googlePhotoRefs: true,
       openingHours: true,
       businessStatus: true,
+      googleRating: true,
+      googleReviewCount: true,
       city: true,
       ward: true,
     },

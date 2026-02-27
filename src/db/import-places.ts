@@ -90,6 +90,8 @@ async function main() {
               }
             : null,
           businessStatus: place.businessStatus || null,
+          googleRating: place.rating ?? null,
+          googleReviewCount: place.userRatingCount ?? null,
           notes: note || comment || null,
           source: "csv_import",
           visited: false,

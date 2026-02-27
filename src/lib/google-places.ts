@@ -1,7 +1,8 @@
 const SEARCH_FIELD_MASK =
-  "places.id,places.displayName,places.formattedAddress,places.location,places.photos,places.googleMapsUri,places.types,places.regularOpeningHours,places.businessStatus";
+  "places.id,places.displayName,places.formattedAddress,places.location,places.photos,places.googleMapsUri,places.types,places.regularOpeningHours,places.businessStatus,places.rating,places.userRatingCount";
 
-const DETAILS_FIELD_MASK = "regularOpeningHours,photos,businessStatus";
+const DETAILS_FIELD_MASK =
+  "regularOpeningHours,photos,businessStatus,rating,userRatingCount";
 
 export interface PlaceResult {
   id: string;
@@ -20,6 +21,8 @@ export interface PlaceResult {
     weekdayDescriptions?: string[];
   };
   businessStatus?: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY";
+  rating?: number;
+  userRatingCount?: number;
 }
 
 function getApiKey(): string {

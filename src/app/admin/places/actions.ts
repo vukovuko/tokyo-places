@@ -214,6 +214,10 @@ export async function refreshFromGoogle(placeId: number) {
     updateData.googlePhotoRef = details.photos[0].name;
   }
 
+  if (details.rating != null) updateData.googleRating = details.rating;
+  if (details.userRatingCount != null)
+    updateData.googleReviewCount = details.userRatingCount;
+
   await db.update(places).set(updateData).where(eq(places.id, placeId));
   revalidatePath("/admin/places");
   revalidatePath("/");
@@ -254,6 +258,10 @@ export async function bulkRefreshFromGoogle(placeIds: number[]) {
         updateData.googlePhotoRefs = details.photos.map((p) => p.name);
         updateData.googlePhotoRef = details.photos[0].name;
       }
+
+      if (details.rating != null) updateData.googleRating = details.rating;
+      if (details.userRatingCount != null)
+        updateData.googleReviewCount = details.userRatingCount;
 
       await db.update(places).set(updateData).where(eq(places.id, place.id));
       updated++;

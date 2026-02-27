@@ -1,17 +1,20 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import type { getAllPlacesForMap } from "@/db/queries/places";
-import type { getAllCategories } from "@/db/queries/categories";
+import type { getCategoriesWithCounts } from "@/db/queries/categories";
 import { ExplorerMap } from "./explorer-map";
 import { ExplorerSidebar } from "./explorer-sidebar";
 import { ExplorerList } from "./explorer-list";
 import { PlaceDetailDrawer } from "./place-detail-drawer";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
+import { useUserLocation } from "@/hooks/use-user-location";
+import { haversineDistance } from "@/lib/geo";
 
 type Place = Awaited<ReturnType<typeof getAllPlacesForMap>>[number];
-type Category = Awaited<ReturnType<typeof getAllCategories>>[number];
+type Category = Awaited<ReturnType<typeof getCategoriesWithCounts>>[number];
 
 export interface Filters {
   search: string;
@@ -19,6 +22,7 @@ export interface Filters {
   visited: "all" | "true" | "false";
   cities: string[];
   wards: string[];
+  nearMe: boolean;
 }
 
 interface ExplorerProps {
@@ -27,15 +31,28 @@ interface ExplorerProps {
 }
 
 export function Explorer({ places, categories }: ExplorerProps) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [view, setView] = useState<"map" | "list">("map");
-  const [selectedPlaceId, setSelectedPlaceId] = useState<number | null>(null);
+  const [selectedPlaceId, setSelectedPlaceId] = useState<number | null>(() => {
+    const param = searchParams.get("place");
+    if (!param) return null;
+    const id = parseInt(param, 10);
+    return !isNaN(id) && places.some((p) => p.id === id) ? id : null;
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const {
+    position: userPosition,
+    heading: userHeading,
+    error: locationError,
+  } = useUserLocation();
   const [filters, setFilters] = useState<Filters>({
     search: "",
     categoryIds: [],
     visited: "all",
     cities: [],
     wards: [],
+    nearMe: false,
   });
 
   const filteredPlaces = useMemo(() => {
@@ -81,6 +98,30 @@ export function Explorer({ places, categories }: ExplorerProps) {
     });
   }, [places, filters]);
 
+  const distanceMap = useMemo(() => {
+    if (!userPosition) return null;
+    const map = new Map<number, number>();
+    for (const p of filteredPlaces) {
+      map.set(
+        p.id,
+        haversineDistance(
+          userPosition.lat,
+          userPosition.lng,
+          p.latitude,
+          p.longitude,
+        ),
+      );
+    }
+    return map;
+  }, [filteredPlaces, userPosition]);
+
+  const sortedPlaces = useMemo(() => {
+    if (!filters.nearMe || !distanceMap) return filteredPlaces;
+    return [...filteredPlaces].sort(
+      (a, b) => (distanceMap.get(a.id) ?? 0) - (distanceMap.get(b.id) ?? 0),
+    );
+  }, [filteredPlaces, filters.nearMe, distanceMap]);
+
   const { cities, wards } = useMemo(() => {
     const citySet = new Set<string>();
     const wardSet = new Set<string>();
@@ -93,6 +134,15 @@ export function Explorer({ places, categories }: ExplorerProps) {
       wards: Array.from(wardSet).sort(),
     };
   }, [places]);
+
+  const selectPlace = useCallback(
+    (id: number | null) => {
+      setSelectedPlaceId(id);
+      const url = id ? `/?place=${id}` : "/";
+      router.replace(url, { scroll: false });
+    },
+    [router],
+  );
 
   const selectedPlace = places.find((p) => p.id === selectedPlaceId) || null;
 
@@ -122,19 +172,30 @@ export function Explorer({ places, categories }: ExplorerProps) {
         onOpenChange={setSidebarOpen}
         placeCount={filteredPlaces.length}
         totalCount={places.length}
+        userPosition={userPosition}
+        locationError={locationError}
+        allPlaces={places}
+        onPlaceSelect={(id: number) => {
+          selectPlace(id);
+          setSidebarOpen(false);
+        }}
       />
 
       <div className="flex-1">
         {view === "map" ? (
           <ExplorerMap
-            places={filteredPlaces}
+            places={sortedPlaces}
             selectedPlaceId={selectedPlaceId}
-            onPlaceSelect={setSelectedPlaceId}
+            onPlaceSelect={selectPlace}
+            userPosition={userPosition}
+            userHeading={userHeading}
+            locationError={locationError}
           />
         ) : (
           <ExplorerList
-            places={filteredPlaces}
-            onPlaceSelect={setSelectedPlaceId}
+            places={sortedPlaces}
+            onPlaceSelect={selectPlace}
+            distances={filters.nearMe ? distanceMap : null}
           />
         )}
       </div>
@@ -142,7 +203,7 @@ export function Explorer({ places, categories }: ExplorerProps) {
       {selectedPlace && (
         <PlaceDetailDrawer
           place={selectedPlace}
-          onClose={() => setSelectedPlaceId(null)}
+          onClose={() => selectPlace(null)}
         />
       )}
     </div>

@@ -10,6 +10,7 @@ import {
   useMap,
 } from "@vis.gl/react-google-maps";
 import { MapPin } from "./map-pin";
+import { WeatherWidget } from "./weather-widget";
 import { LocateFixed } from "lucide-react";
 
 interface Place {
@@ -27,50 +28,9 @@ interface ExplorerMapProps {
   places: Place[];
   selectedPlaceId: number | null;
   onPlaceSelect: (id: number) => void;
-}
-
-function useUserLocation() {
-  const [position, setPosition] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
-  const [heading, setHeading] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      setError("Geolocation not supported");
-      return;
-    }
-
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        if (pos.coords.heading != null && !Number.isNaN(pos.coords.heading)) {
-          setHeading(pos.coords.heading);
-        }
-        setError(null);
-      },
-      (err) => {
-        switch (err.code) {
-          case err.PERMISSION_DENIED:
-            setError("Location access denied");
-            break;
-          case err.POSITION_UNAVAILABLE:
-            setError("Location unavailable");
-            break;
-          case err.TIMEOUT:
-            setError("Location request timed out");
-            break;
-        }
-      },
-      { enableHighAccuracy: true, maximumAge: 10000 },
-    );
-
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
-
-  return { position, heading, error };
+  userPosition: { lat: number; lng: number } | null;
+  userHeading: number | null;
+  locationError: string | null;
 }
 
 function UserLocationDot({ heading }: { heading: number | null }) {
@@ -136,13 +96,35 @@ function MyLocationButton({
   );
 }
 
+function PanToSelected({
+  places,
+  selectedPlaceId,
+}: {
+  places: Place[];
+  selectedPlaceId: number | null;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || !selectedPlaceId) return;
+    const place = places.find((p) => p.id === selectedPlaceId);
+    if (place) {
+      map.panTo({ lat: place.latitude, lng: place.longitude });
+    }
+  }, [map, selectedPlaceId, places]);
+
+  return null;
+}
+
 export function ExplorerMap({
   places,
   selectedPlaceId,
   onPlaceSelect,
+  userPosition: userPos,
+  userHeading: heading,
+  locationError: error,
 }: ExplorerMapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const { position: userPos, heading, error } = useUserLocation();
 
   if (!apiKey) {
     return (
@@ -170,6 +152,8 @@ export function ExplorerMap({
         gestureHandling="greedy"
         mapTypeControl={false}
       >
+        <PanToSelected places={places} selectedPlaceId={selectedPlaceId} />
+
         {/* User location */}
         {userPos && (
           <AdvancedMarker position={userPos} zIndex={1000} title="You are here">
@@ -197,6 +181,12 @@ export function ExplorerMap({
             </AdvancedMarker>
           );
         })}
+
+        <MapControl position={ControlPosition.RIGHT_TOP}>
+          <div className="mr-2.5 mt-2.5">
+            <WeatherWidget />
+          </div>
+        </MapControl>
 
         <MapControl position={ControlPosition.RIGHT_BOTTOM}>
           <div className="mr-2.5 mb-6">

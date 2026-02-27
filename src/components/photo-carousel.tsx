@@ -205,7 +205,11 @@ export function PhotoCarousel({
       >
         <DialogPrimitive.Portal>
           <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/90" />
-          <DialogPrimitive.Content className="fixed inset-0 z-50 flex items-center justify-center outline-none">
+          <DialogPrimitive.Content
+            className="fixed inset-0 z-50 flex items-center justify-center outline-none"
+            aria-describedby={undefined}
+            onClick={() => setPreviewIndex(null)}
+          >
             <DialogPrimitive.Title className="sr-only">
               {alt} — photo {(previewIndex ?? 0) + 1} of {validRefs.length}
             </DialogPrimitive.Title>
@@ -218,10 +222,12 @@ export function PhotoCarousel({
 
             {previewIndex !== null && (
               <>
+                {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
                 <img
                   src={getPhotoUrl(validRefs[previewIndex], 1200)!}
                   alt={`${alt} ${previewIndex + 1}`}
                   className="max-w-[90vw] max-h-[85vh] object-contain"
+                  onClick={(e) => e.stopPropagation()}
                 />
 
                 {/* Preview arrows */}
@@ -230,21 +236,23 @@ export function PhotoCarousel({
                     <button
                       type="button"
                       className="absolute left-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-                      onClick={() =>
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setPreviewIndex(
                           (previewIndex - 1 + validRefs.length) %
                             validRefs.length,
-                        )
-                      }
+                        );
+                      }}
                     >
                       <ChevronLeft className="h-6 w-6" />
                     </button>
                     <button
                       type="button"
                       className="absolute right-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-                      onClick={() =>
-                        setPreviewIndex((previewIndex + 1) % validRefs.length)
-                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPreviewIndex((previewIndex + 1) % validRefs.length);
+                      }}
                     >
                       <ChevronRight className="h-6 w-6" />
                     </button>

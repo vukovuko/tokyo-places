@@ -2,8 +2,9 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Star, MapPin, Check } from "lucide-react";
+import { Star, MapPin, Check, Navigation } from "lucide-react";
 import { getContrastColor } from "@/lib/utils";
+import { formatDistance } from "@/lib/geo";
 import { OpenClosedBadge } from "@/components/open-closed-badge";
 import type { OpeningHoursData } from "@/lib/opening-hours";
 
@@ -29,9 +30,14 @@ interface Place {
 interface ExplorerListProps {
   places: Place[];
   onPlaceSelect: (id: number) => void;
+  distances: Map<number, number> | null;
 }
 
-export function ExplorerList({ places, onPlaceSelect }: ExplorerListProps) {
+export function ExplorerList({
+  places,
+  onPlaceSelect,
+  distances,
+}: ExplorerListProps) {
   if (places.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -61,6 +67,12 @@ export function ExplorerList({ places, onPlaceSelect }: ExplorerListProps) {
                 <p className="mb-1 flex items-start gap-1 text-xs text-muted-foreground">
                   <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
                   {place.address}
+                </p>
+              )}
+              {distances?.has(place.id) && (
+                <p className="mb-1 flex items-center gap-1 text-xs text-blue-600">
+                  <Navigation className="h-3 w-3 shrink-0" />
+                  {formatDistance(distances.get(place.id)!)} away
                 </p>
               )}
 

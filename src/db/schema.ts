@@ -59,6 +59,8 @@ export const places = pgTable("places", {
     weekdayDescriptions: string[];
   } | null>(),
   businessStatus: varchar("business_status", { length: 50 }),
+  googleRating: doublePrecision("google_rating"),
+  googleReviewCount: integer("google_review_count"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

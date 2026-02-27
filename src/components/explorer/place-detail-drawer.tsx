@@ -14,6 +14,7 @@ import {
   Navigation,
   ChevronDown,
   ChevronUp,
+  Share2,
 } from "lucide-react";
 import { getContrastColor } from "@/lib/utils";
 import { OpenClosedBadge } from "@/components/open-closed-badge";
@@ -38,6 +39,8 @@ interface Place {
   googlePhotoRefs: string[] | null;
   openingHours: OpeningHoursData | null;
   businessStatus: string | null;
+  googleRating: number | null;
+  googleReviewCount: number | null;
   placeCategories: {
     categoryId: number;
     category: {
@@ -55,6 +58,7 @@ interface PlaceDetailDrawerProps {
 
 export function PlaceDetailDrawer({ place, onClose }: PlaceDetailDrawerProps) {
   const [hoursExpanded, setHoursExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`;
 
   return (
@@ -73,6 +77,17 @@ export function PlaceDetailDrawer({ place, onClose }: PlaceDetailDrawerProps) {
             openingHours={place.openingHours}
             businessStatus={place.businessStatus}
           />
+          {place.googleRating != null && (
+            <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+              {place.googleRating}
+              {place.googleReviewCount != null && (
+                <span>
+                  ({place.googleReviewCount.toLocaleString()} reviews)
+                </span>
+              )}
+            </p>
+          )}
         </div>
         <Button variant="ghost" size="icon-xs" onClick={onClose}>
           <X className="h-4 w-4" />
@@ -85,8 +100,6 @@ export function PlaceDetailDrawer({ place, onClose }: PlaceDetailDrawerProps) {
         alt={place.title}
         className="mx-4 h-48"
       />
-
-      <Separator />
 
       <div className="space-y-4 p-4">
         {/* Categories */}
@@ -211,6 +224,19 @@ export function PlaceDetailDrawer({ place, onClose }: PlaceDetailDrawerProps) {
               </a>
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const url = `${window.location.origin}/?place=${place.id}`;
+              navigator.clipboard.writeText(url);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
+          >
+            <Share2 className="mr-1 h-4 w-4" />
+            {copied ? "Copied!" : "Share"}
+          </Button>
         </div>
       </div>
     </div>
