@@ -6,26 +6,7 @@ import { Star, MapPin, Check, Navigation } from "lucide-react";
 import { getContrastColor } from "@/lib/utils";
 import { formatDistance } from "@/lib/geo";
 import { OpenClosedBadge } from "@/components/open-closed-badge";
-import type { OpeningHoursData } from "@/lib/opening-hours";
-
-interface Place {
-  id: number;
-  title: string;
-  description: string | null;
-  address: string | null;
-  visited: boolean;
-  rating: number | null;
-  openingHours: OpeningHoursData | null;
-  businessStatus: string | null;
-  placeCategories: {
-    categoryId: number;
-    category: {
-      id: number;
-      name: string;
-      color: string;
-    };
-  }[];
-}
+import type { Place } from "./explorer";
 
 interface ExplorerListProps {
   places: Place[];

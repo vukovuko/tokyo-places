@@ -19,38 +19,8 @@ import {
 } from "lucide-react";
 import { getContrastColor } from "@/lib/utils";
 import { OpenClosedBadge } from "@/components/open-closed-badge";
-import {
-  getTodayHours,
-  formatWeekdayHours,
-  type OpeningHoursData,
-} from "@/lib/opening-hours";
-
-interface Place {
-  id: number;
-  title: string;
-  description: string | null;
-  address: string | null;
-  latitude: number;
-  longitude: number;
-  visited: boolean;
-  rating: number | null;
-  notes: string | null;
-  googleMapsUrl: string | null;
-  googlePhotoRef: string | null;
-  googlePhotoRefs: string[] | null;
-  openingHours: OpeningHoursData | null;
-  businessStatus: string | null;
-  googleRating: number | null;
-  googleReviewCount: number | null;
-  placeCategories: {
-    categoryId: number;
-    category: {
-      id: number;
-      name: string;
-      color: string;
-    };
-  }[];
-}
+import { getTodayHours, formatWeekdayHours } from "@/lib/opening-hours";
+import type { Place } from "./explorer";
 
 interface PlaceDetailDrawerProps {
   place: Place;

@@ -13,7 +13,7 @@ import { Menu } from "lucide-react";
 import { useUserLocation } from "@/hooks/use-user-location";
 import { haversineDistance } from "@/lib/geo";
 
-type Place = Awaited<ReturnType<typeof getAllPlacesForMap>>[number];
+export type Place = Awaited<ReturnType<typeof getAllPlacesForMap>>[number];
 type Category = Awaited<ReturnType<typeof getCategoriesWithCounts>>[number];
 
 export interface Filters {

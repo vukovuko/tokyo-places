@@ -13,17 +13,7 @@ import Supercluster from "supercluster";
 import { MapPin } from "./map-pin";
 import { WeatherWidget } from "./weather-widget";
 import { LocateFixed } from "lucide-react";
-
-interface Place {
-  id: number;
-  title: string;
-  latitude: number;
-  longitude: number;
-  placeCategories: {
-    categoryId: number;
-    category: { color: string };
-  }[];
-}
+import type { Place } from "./explorer";
 
 interface ExplorerMapProps {
   places: Place[];
@@ -114,13 +104,6 @@ function PanToTarget({
   return null;
 }
 
-interface ClusterProperties {
-  cluster: true;
-  cluster_id: number;
-  point_count: number;
-  point_count_abbreviated: number;
-}
-
 interface PointProperties {
   cluster: false;
   placeId: number;
@@ -128,8 +111,6 @@ interface PointProperties {
   title: string;
   selected: boolean;
 }
-
-type FeatureProps = ClusterProperties | PointProperties;
 
 const CLUSTER_THRESHOLD = 50;
 
@@ -197,10 +178,7 @@ function ClusteredMarkers({
   // Get visible clusters/points
   const clusters = useMemo(() => {
     if (!index || !viewport) return [];
-    return index.getClusters(
-      viewport.bbox,
-      viewport.zoom,
-    ) as Supercluster.ClusterFeature<FeatureProps>[];
+    return index.getClusters(viewport.bbox, viewport.zoom);
   }, [index, viewport]);
 
   const handleClusterClick = useCallback(
@@ -261,8 +239,7 @@ function ClusteredMarkers({
           );
         }
 
-        const { placeId, color, title, selected } =
-          props as unknown as PointProperties;
+        const { placeId, color, title, selected } = props;
         return (
           <AdvancedMarker
             key={`place-${placeId}`}
