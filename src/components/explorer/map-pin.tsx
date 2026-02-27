@@ -1,0 +1,28 @@
+interface MapPinProps {
+  color: string;
+  selected?: boolean;
+}
+
+export function MapPin({ color, selected = false }: MapPinProps) {
+  return (
+    <svg
+      width={selected ? 36 : 28}
+      height={selected ? 44 : 36}
+      viewBox="0 0 28 36"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{
+        filter: selected
+          ? "drop-shadow(0 2px 6px rgba(0,0,0,0.4))"
+          : "drop-shadow(0 1px 3px rgba(0,0,0,0.3))",
+        transition: "all 0.15s ease",
+      }}
+    >
+      <path
+        d="M14 0C6.268 0 0 6.268 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.268 21.732 0 14 0z"
+        fill={color}
+      />
+      <circle cx="14" cy="14" r="6" fill="white" opacity="0.9" />
+    </svg>
+  );
+}
