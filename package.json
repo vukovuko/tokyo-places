@@ -16,7 +16,8 @@
     "db:import": "tsx --env-file=.env src/db/import-places.ts",
     "db:fix-imports": "tsx --env-file=.env src/db/fix-failed-imports.ts",
     "db:backfill-hours": "tsx --env-file=.env src/db/backfill-opening-hours.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "prepare": "husky"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
@@ -50,6 +51,7 @@
     "@types/supercluster": "^7.1.3",
     "babel-plugin-react-compiler": "1.0.0",
     "drizzle-kit": "^0.31.9",
+    "husky": "^9.1.7",
     "shadcn": "^3.8.5",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",

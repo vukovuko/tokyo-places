@@ -181,26 +181,36 @@ export function PlaceDetailDrawer({
         <Separator />
 
         {/* Action buttons */}
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {onShowOnMap && (
             <Button
               variant="outline"
               size="sm"
-              className="flex-1"
+              className="w-full border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
               onClick={onShowOnMap}
             >
               <MapIcon className="mr-1 h-4 w-4" />
               Show on Map
             </Button>
           )}
-          <Button variant="outline" size="sm" className="flex-1" asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950"
+            asChild
+          >
             <a href={directionsUrl} target="_blank" rel="noopener noreferrer">
               <Navigation className="mr-1 h-4 w-4" />
               Directions
             </a>
           </Button>
           {place.googleMapsUrl && (
-            <Button variant="outline" size="sm" className="flex-1" asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full border-red-200 text-red-500 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+              asChild
+            >
               <a
                 href={place.googleMapsUrl}
                 target="_blank"
@@ -214,6 +224,7 @@ export function PlaceDetailDrawer({
           <Button
             variant="outline"
             size="sm"
+            className="w-full border-violet-200 text-violet-600 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 dark:hover:bg-violet-950"
             onClick={() => {
               const url = `${window.location.origin}/?place=${place.id}`;
               navigator.clipboard.writeText(url);
