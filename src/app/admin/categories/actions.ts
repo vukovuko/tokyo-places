@@ -8,14 +8,19 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
 
+async function requireAdmin() {
+  const session = await auth();
+  if (!session || session.user.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+  return session;
+}
+
 export async function createCategory(
   _prevState: { error: string | null },
   formData: FormData,
 ) {
-  const session = await auth();
-  if (!session || session.user.role !== "admin") {
-    return { error: "Unauthorized" };
-  }
+  await requireAdmin();
 
   const name = formData.get("name") as string;
   const color = formData.get("color") as string;
@@ -45,10 +50,7 @@ export async function updateCategory(
   _prevState: { error: string | null },
   formData: FormData,
 ) {
-  const session = await auth();
-  if (!session || session.user.role !== "admin") {
-    return { error: "Unauthorized" };
-  }
+  await requireAdmin();
 
   const name = formData.get("name") as string;
   const color = formData.get("color") as string;
@@ -77,10 +79,7 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(id: number) {
-  const session = await auth();
-  if (!session || session.user.role !== "admin") {
-    return { error: "Unauthorized" };
-  }
+  await requireAdmin();
 
   // Delete junction entries first (cascade should handle this, but be explicit)
   await db.delete(placeCategories).where(eq(placeCategories.categoryId, id));

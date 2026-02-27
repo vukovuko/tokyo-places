@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MapPin, Tag, LogOut, ChevronsUpDown } from "lucide-react";
+import { signOutAction } from "@/app/admin/actions";
 import {
   Sidebar,
   SidebarContent,
@@ -100,11 +101,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
                 sideOffset={4}
               >
                 <DropdownMenuItem asChild>
-                  <form
-                    action="/api/auth/signout"
-                    method="POST"
-                    className="w-full"
-                  >
+                  <form action={signOutAction} className="w-full">
                     <button
                       type="submit"
                       className="flex w-full items-center gap-2"
