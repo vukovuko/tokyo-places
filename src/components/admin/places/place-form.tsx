@@ -29,7 +29,7 @@ import {
   ComboboxItem,
 } from "@/components/ui/combobox";
 import { PageHeader } from "@/components/admin/page-header";
-import { PlaceImage } from "@/components/place-image";
+import { PhotoCarousel } from "@/components/photo-carousel";
 import { SOURCE_OPTIONS } from "@/lib/constants";
 import { getContrastColor } from "@/lib/utils";
 import { Star, MapPin, ExternalLink, RefreshCw } from "lucide-react";
@@ -63,6 +63,7 @@ interface PlaceFormProps {
     city: string | null;
     ward: string | null;
     googlePhotoRef: string | null;
+    googlePhotoRefs: string[] | null;
     openingHours: OpeningHoursData | null;
     businessStatus: string | null;
     categoryIds: number[];
@@ -211,11 +212,11 @@ export function PlaceForm({
             />
           </div>
 
-          {/* Place photo */}
-          {isEdit && defaultValues?.googlePhotoRef && (
-            <PlaceImage
-              photoRef={defaultValues.googlePhotoRef}
-              alt={defaultValues.title}
+          {/* Place photos */}
+          {isEdit && (
+            <PhotoCarousel
+              photoRefs={defaultValues?.googlePhotoRefs}
+              alt={defaultValues?.title ?? ""}
               className="h-56"
             />
           )}

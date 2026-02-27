@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { PlaceImage } from "@/components/place-image";
+import { PhotoCarousel } from "@/components/photo-carousel";
 import {
   X,
   Star,
@@ -35,6 +35,7 @@ interface Place {
   notes: string | null;
   googleMapsUrl: string | null;
   googlePhotoRef: string | null;
+  googlePhotoRefs: string[] | null;
   openingHours: OpeningHoursData | null;
   businessStatus: string | null;
   placeCategories: {
@@ -78,14 +79,12 @@ export function PlaceDetailDrawer({ place, onClose }: PlaceDetailDrawerProps) {
         </Button>
       </div>
 
-      {/* Place photo */}
-      {place.googlePhotoRef && (
-        <PlaceImage
-          photoRef={place.googlePhotoRef}
-          alt={place.title}
-          className="mx-4 h-48"
-        />
-      )}
+      {/* Place photos */}
+      <PhotoCarousel
+        photoRefs={place.googlePhotoRefs}
+        alt={place.title}
+        className="mx-4 h-48"
+      />
 
       <Separator />
 
