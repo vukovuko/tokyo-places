@@ -401,13 +401,27 @@ export function PlaceForm({
           {/* Google Maps URL */}
           <div className="space-y-2">
             <Label htmlFor="googleMapsUrl">Google Maps URL</Label>
-            <Input
-              id="googleMapsUrl"
-              name="googleMapsUrl"
-              type="url"
-              placeholder="https://maps.google.com/..."
-              defaultValue={defaultValues?.googleMapsUrl ?? ""}
-            />
+            <div className="relative">
+              <Input
+                id="googleMapsUrl"
+                name="googleMapsUrl"
+                type="url"
+                placeholder="https://maps.google.com/..."
+                defaultValue={defaultValues?.googleMapsUrl ?? ""}
+                className="pr-9"
+              />
+              {defaultValues?.googleMapsUrl && (
+                <a
+                  href={defaultValues.googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground hover:text-foreground absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors"
+                  title="Open in Google Maps"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              )}
+            </div>
           </div>
 
           {/* Google Place ID */}
