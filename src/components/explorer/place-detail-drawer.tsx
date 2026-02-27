@@ -1,11 +1,27 @@
 "use client";
 
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { PlaceImage } from "@/components/place-image";
-import { X, Star, MapPin, Check, ExternalLink, Navigation } from "lucide-react";
+import {
+  X,
+  Star,
+  MapPin,
+  Check,
+  ExternalLink,
+  Navigation,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { getContrastColor } from "@/lib/utils";
+import { OpenClosedBadge } from "@/components/open-closed-badge";
+import {
+  getTodayHours,
+  formatWeekdayHours,
+  type OpeningHoursData,
+} from "@/lib/opening-hours";
 
 interface Place {
   id: number;
@@ -19,6 +35,8 @@ interface Place {
   notes: string | null;
   googleMapsUrl: string | null;
   googlePhotoRef: string | null;
+  openingHours: OpeningHoursData | null;
+  businessStatus: string | null;
   placeCategories: {
     categoryId: number;
     category: {
@@ -35,6 +53,7 @@ interface PlaceDetailDrawerProps {
 }
 
 export function PlaceDetailDrawer({ place, onClose }: PlaceDetailDrawerProps) {
+  const [hoursExpanded, setHoursExpanded] = useState(false);
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`;
 
   return (
@@ -49,6 +68,10 @@ export function PlaceDetailDrawer({ place, onClose }: PlaceDetailDrawerProps) {
               {place.address}
             </p>
           )}
+          <OpenClosedBadge
+            openingHours={place.openingHours}
+            businessStatus={place.businessStatus}
+          />
         </div>
         <Button variant="ghost" size="icon-xs" onClick={onClose}>
           <X className="h-4 w-4" />
@@ -81,6 +104,45 @@ export function PlaceDetailDrawer({ place, onClose }: PlaceDetailDrawerProps) {
             </Badge>
           ))}
         </div>
+
+        {/* Opening hours — collapsible */}
+        {place.openingHours?.periods &&
+          (() => {
+            const todayHours = getTodayHours(place.openingHours);
+            const allHours = formatWeekdayHours(place.openingHours);
+
+            return (
+              <div>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between text-left"
+                  onClick={() => setHoursExpanded((v) => !v)}
+                >
+                  <span className="text-sm text-muted-foreground">
+                    {todayHours || "Hours"}
+                  </span>
+                  {allHours &&
+                    (hoursExpanded ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                    ))}
+                </button>
+                {hoursExpanded && allHours && (
+                  <div className="mt-2 space-y-0.5">
+                    {allHours.map((line, i) => (
+                      <p key={i} className="text-sm text-muted-foreground">
+                        {line}
+                      </p>
+                    ))}
+                    <p className="mt-1 text-xs text-muted-foreground/60 italic">
+                      Hours may vary on holidays
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
         {/* Status row */}
         <div className="flex items-center gap-4">

@@ -1,8 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { APIProvider, Map, AdvancedMarker } from "@vis.gl/react-google-maps";
+import { useState, useEffect, useCallback } from "react";
+import {
+  APIProvider,
+  Map,
+  AdvancedMarker,
+  MapControl,
+  ControlPosition,
+  useMap,
+} from "@vis.gl/react-google-maps";
 import { MapPin } from "./map-pin";
+import { LocateFixed } from "lucide-react";
 
 interface Place {
   id: number;
@@ -27,9 +35,13 @@ function useUserLocation() {
     lng: number;
   } | null>(null);
   const [heading, setHeading] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      setError("Geolocation not supported");
+      return;
+    }
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
@@ -37,15 +49,28 @@ function useUserLocation() {
         if (pos.coords.heading != null && !Number.isNaN(pos.coords.heading)) {
           setHeading(pos.coords.heading);
         }
+        setError(null);
       },
-      () => {},
+      (err) => {
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            setError("Location access denied");
+            break;
+          case err.POSITION_UNAVAILABLE:
+            setError("Location unavailable");
+            break;
+          case err.TIMEOUT:
+            setError("Location request timed out");
+            break;
+        }
+      },
       { enableHighAccuracy: true, maximumAge: 10000 },
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
-  return { position, heading };
+  return { position, heading, error };
 }
 
 function UserLocationDot({ heading }: { heading: number | null }) {
@@ -70,13 +95,54 @@ function UserLocationDot({ heading }: { heading: number | null }) {
   );
 }
 
+function MyLocationButton({
+  userPos,
+  error,
+}: {
+  userPos: { lat: number; lng: number } | null;
+  error: string | null;
+}) {
+  const map = useMap();
+  const [showError, setShowError] = useState(false);
+
+  const handleClick = useCallback(() => {
+    if (userPos && map) {
+      map.panTo(userPos);
+      map.setZoom(15);
+    } else if (error) {
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
+    }
+  }, [userPos, error, map]);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={handleClick}
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-background shadow-md border transition-colors hover:bg-accent"
+        title={error || "Center on my location"}
+      >
+        <LocateFixed
+          className={`h-5 w-5 ${userPos ? "text-blue-500" : "text-muted-foreground"}`}
+        />
+      </button>
+      {showError && error && (
+        <div className="absolute bottom-12 right-0 whitespace-nowrap rounded-md bg-background px-3 py-1.5 text-xs shadow-md border">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ExplorerMap({
   places,
   selectedPlaceId,
   onPlaceSelect,
 }: ExplorerMapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const { position: userPos, heading } = useUserLocation();
+  const { position: userPos, heading, error } = useUserLocation();
 
   if (!apiKey) {
     return (
@@ -131,6 +197,12 @@ export function ExplorerMap({
             </AdvancedMarker>
           );
         })}
+
+        <MapControl position={ControlPosition.RIGHT_BOTTOM}>
+          <div className="mr-2.5 mb-6">
+            <MyLocationButton userPos={userPos} error={error} />
+          </div>
+        </MapControl>
       </Map>
     </APIProvider>
   );

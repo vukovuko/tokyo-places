@@ -53,7 +53,7 @@ export function PlacesToolbar({
   function handleSearch(value: string) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      updateParams({ search: value || undefined });
+      updateParams({ search: value || "" });
     }, 300);
   }
 

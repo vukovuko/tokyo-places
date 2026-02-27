@@ -9,6 +9,7 @@ import {
   doublePrecision,
   timestamp,
   primaryKey,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -49,6 +50,15 @@ export const places = pgTable("places", {
   ward: varchar("ward", { length: 255 }),
   source: varchar("source", { length: 50 }),
   googlePhotoRef: text("google_photo_ref"),
+  googlePhotoRefs: jsonb("google_photo_refs").$type<string[] | null>(),
+  openingHours: jsonb("opening_hours").$type<{
+    periods: Array<{
+      open: { day: number; hour: number; minute: number };
+      close?: { day: number; hour: number; minute: number };
+    }>;
+    weekdayDescriptions: string[];
+  } | null>(),
+  businessStatus: varchar("business_status", { length: 50 }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

@@ -6,6 +6,7 @@ import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { getPlaceDetails } from "@/lib/google-places";
 
 async function requireAdmin() {
   const session = await auth();
@@ -175,4 +176,96 @@ export async function bulkSetVisited(placeIds: number[], visited: boolean) {
     .set({ visited, updatedAt: new Date() })
     .where(inArray(places.id, placeIds));
   revalidatePath("/admin/places");
+}
+
+export async function refreshFromGoogle(placeId: number) {
+  await requireAdmin();
+
+  const place = await db.query.places.findFirst({
+    where: eq(places.id, placeId),
+    columns: { googlePlaceId: true },
+  });
+
+  if (!place?.googlePlaceId) {
+    return { error: "No Google Place ID" };
+  }
+
+  const details = await getPlaceDetails(place.googlePlaceId);
+  if (!details) {
+    return { error: "Failed to fetch from Google" };
+  }
+
+  const updateData: Record<string, unknown> = { updatedAt: new Date() };
+
+  if (details.regularOpeningHours) {
+    updateData.openingHours = {
+      periods: details.regularOpeningHours.periods ?? [],
+      weekdayDescriptions:
+        details.regularOpeningHours.weekdayDescriptions ?? [],
+    };
+  }
+
+  if (details.businessStatus) {
+    updateData.businessStatus = details.businessStatus;
+  }
+
+  if (details.photos && details.photos.length > 0) {
+    updateData.googlePhotoRefs = details.photos.map((p) => p.name);
+    updateData.googlePhotoRef = details.photos[0].name;
+  }
+
+  await db.update(places).set(updateData).where(eq(places.id, placeId));
+  revalidatePath("/admin/places");
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function bulkRefreshFromGoogle(placeIds: number[]) {
+  await requireAdmin();
+
+  const placesToRefresh = await db.query.places.findMany({
+    where: inArray(places.id, placeIds),
+    columns: { id: true, googlePlaceId: true },
+  });
+
+  let updated = 0;
+  for (const place of placesToRefresh) {
+    if (!place.googlePlaceId) continue;
+
+    try {
+      const details = await getPlaceDetails(place.googlePlaceId);
+      if (!details) continue;
+
+      const updateData: Record<string, unknown> = { updatedAt: new Date() };
+
+      if (details.regularOpeningHours) {
+        updateData.openingHours = {
+          periods: details.regularOpeningHours.periods ?? [],
+          weekdayDescriptions:
+            details.regularOpeningHours.weekdayDescriptions ?? [],
+        };
+      }
+
+      if (details.businessStatus) {
+        updateData.businessStatus = details.businessStatus;
+      }
+
+      if (details.photos?.length) {
+        updateData.googlePhotoRefs = details.photos.map((p) => p.name);
+        updateData.googlePhotoRef = details.photos[0].name;
+      }
+
+      await db.update(places).set(updateData).where(eq(places.id, place.id));
+      updated++;
+    } catch (err) {
+      console.error(`Failed to refresh place ${place.id}:`, err);
+    }
+
+    // Rate limiting
+    await new Promise((r) => setTimeout(r, 100));
+  }
+
+  revalidatePath("/admin/places");
+  revalidatePath("/");
+  return { updated };
 }

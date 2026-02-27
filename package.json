@@ -15,6 +15,7 @@
     "db:seed:categories": "tsx --env-file=.env src/db/seed-categories.ts",
     "db:import": "tsx --env-file=.env src/db/import-places.ts",
     "db:fix-imports": "tsx --env-file=.env src/db/fix-failed-imports.ts",
+    "db:backfill-hours": "tsx --env-file=.env src/db/backfill-opening-hours.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

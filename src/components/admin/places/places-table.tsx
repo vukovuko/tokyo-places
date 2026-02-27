@@ -7,6 +7,7 @@ import {
   deletePlaces,
   bulkSetCategories,
   bulkSetVisited,
+  bulkRefreshFromGoogle,
 } from "@/app/admin/places/actions";
 import {
   Table,
@@ -41,9 +42,11 @@ import {
   Eye,
   EyeOff,
   MoreHorizontal,
+  RefreshCw,
 } from "lucide-react";
 import { getContrastColor } from "@/lib/utils";
 import { buildSearchParams } from "@/lib/search-params";
+import { OpenClosedBadge } from "@/components/open-closed-badge";
 
 interface Category {
   id: number;
@@ -122,6 +125,13 @@ export function PlacesTable({ places, categories }: PlacesTableProps) {
   function handleBulkCategory(categoryId: number) {
     startTransition(async () => {
       await bulkSetCategories(Array.from(selected), [categoryId]);
+      setSelected(new Set());
+    });
+  }
+
+  function handleBulkRefresh() {
+    startTransition(async () => {
+      await bulkRefreshFromGoogle(Array.from(selected));
       setSelected(new Set());
     });
   }
@@ -230,6 +240,13 @@ export function PlacesTable({ places, categories }: PlacesTableProps) {
                         <EyeOff className="mr-2 h-4 w-4" />
                         Mark Unvisited
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={handleBulkRefresh}
+                        disabled={isPending}
+                      >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Refresh from Google
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive"
@@ -282,10 +299,17 @@ export function PlacesTable({ places, categories }: PlacesTableProps) {
                   />
                 </TableCell>
                 <TableCell
-                  className="truncate pl-0 font-medium"
+                  className="pl-0 font-medium"
                   onClick={() => router.push(`/admin/places/${place.id}/edit`)}
                 >
-                  {place.title}
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="truncate">{place.title}</span>
+                    <OpenClosedBadge
+                      openingHours={place.openingHours}
+                      businessStatus={place.businessStatus}
+                      size="sm"
+                    />
+                  </div>
                 </TableCell>
                 <TableCell
                   className="overflow-hidden"

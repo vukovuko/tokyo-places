@@ -1,5 +1,7 @@
-const FIELD_MASK =
-  "places.id,places.displayName,places.formattedAddress,places.location,places.photos,places.googleMapsUri,places.types";
+const SEARCH_FIELD_MASK =
+  "places.id,places.displayName,places.formattedAddress,places.location,places.photos,places.googleMapsUri,places.types,places.regularOpeningHours,places.businessStatus";
+
+const DETAILS_FIELD_MASK = "regularOpeningHours,photos,businessStatus";
 
 export interface PlaceResult {
   id: string;
@@ -9,6 +11,15 @@ export interface PlaceResult {
   photos?: Array<{ name: string }>;
   googleMapsUri?: string;
   types?: string[];
+  regularOpeningHours?: {
+    openNow?: boolean;
+    periods?: Array<{
+      open: { day: number; hour: number; minute: number };
+      close?: { day: number; hour: number; minute: number };
+    }>;
+    weekdayDescriptions?: string[];
+  };
+  businessStatus?: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY";
 }
 
 function getApiKey(): string {
@@ -31,7 +42,7 @@ export async function searchPlace(query: string): Promise<PlaceResult | null> {
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": getApiKey(),
-        "X-Goog-FieldMask": FIELD_MASK,
+        "X-Goog-FieldMask": SEARCH_FIELD_MASK,
         Referer: "http://localhost:3000",
       },
       body: JSON.stringify({ textQuery: query }),
@@ -45,4 +56,27 @@ export async function searchPlace(query: string): Promise<PlaceResult | null> {
 
   const data: { places?: PlaceResult[] } = await res.json();
   return data.places?.[0] ?? null;
+}
+
+export async function getPlaceDetails(
+  googlePlaceId: string,
+): Promise<PlaceResult | null> {
+  const res = await fetch(
+    `https://places.googleapis.com/v1/places/${googlePlaceId}`,
+    {
+      headers: {
+        "X-Goog-Api-Key": getApiKey(),
+        "X-Goog-FieldMask": DETAILS_FIELD_MASK,
+        Referer: "http://localhost:3000",
+      },
+    },
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(`Place Details API error ${res.status}: ${text}`);
+    return null;
+  }
+
+  return res.json();
 }

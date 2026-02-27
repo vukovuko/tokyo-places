@@ -33,7 +33,7 @@ EVERY place MUST get at least 1 category. If you're unsure, pick the closest mat
 Rules:
 - Assign 1-5 category slugs per place — ALWAYS at least 1
 - If an existing category fits, USE IT — do not create duplicates or synonyms
-- NEVER create a category that means the same thing as an existing one. No synonyms, no rewordings, no close variants. Examples of what NOT to do: "tourist-street" AND "street-tourists", "shopping-district" AND "shopping-street", "japanese-curry" AND "curry", "coffee-shop" AND "cafes". If something is close enough, use the existing one
+- NEVER create a category that means the same thing as an existing one. No synonyms, no rewordings, no overlapping concepts. Examples of what NOT to do: "tourist-street" AND "street-tourists", "shopping-district" AND "shopping-street", "japanese-curry" AND "curry", "coffee-shop" AND "cafes", "fast-food" AND "food-street", "beer-bar" AND "beer-garden", "walking" AND "walking-tour". If something is close enough, use the existing one. When in doubt, REUSE the existing category
 - Freely CREATE new categories when needed — slug (lowercase-hyphenated), name, icon, color
 - When you create a new category, reuse it for similar places in the same batch and in subsequent batches via the EXISTING list
 - Icon must be one of: utensils, coffee, wine, beer, pizza, cake, ice-cream-cone, cup-soda, sandwich, cooking-pot, landmark, church, castle, building, trees, mountain, waves, shopping-bag, store, gem, theater, ticket, map, compass, flame, star, sparkles, heart, fish, bird, hotel, train-front, camera, globe, zap, music

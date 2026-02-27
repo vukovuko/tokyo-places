@@ -81,6 +81,15 @@ async function main() {
           googlePlaceId: place.id || null,
           googleMapsUrl: url || place.googleMapsUri || null,
           googlePhotoRef: place.photos?.[0]?.name || null,
+          googlePhotoRefs: place.photos?.map((p) => p.name) || null,
+          openingHours: place.regularOpeningHours?.periods
+            ? {
+                periods: place.regularOpeningHours.periods,
+                weekdayDescriptions:
+                  place.regularOpeningHours.weekdayDescriptions ?? [],
+              }
+            : null,
+          businessStatus: place.businessStatus || null,
           notes: note || comment || null,
           source: "csv_import",
           visited: false,

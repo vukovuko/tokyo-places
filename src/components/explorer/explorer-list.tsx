@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Star, MapPin, Check } from "lucide-react";
 import { getContrastColor } from "@/lib/utils";
+import { OpenClosedBadge } from "@/components/open-closed-badge";
+import type { OpeningHoursData } from "@/lib/opening-hours";
 
 interface Place {
   id: number;
@@ -12,6 +14,8 @@ interface Place {
   address: string | null;
   visited: boolean;
   rating: number | null;
+  openingHours: OpeningHoursData | null;
+  businessStatus: string | null;
   placeCategories: {
     categoryId: number;
     category: {
@@ -54,11 +58,19 @@ export function ExplorerList({ places, onPlaceSelect }: ExplorerListProps) {
               </div>
 
               {place.address && (
-                <p className="mb-2 flex items-start gap-1 text-xs text-muted-foreground">
+                <p className="mb-1 flex items-start gap-1 text-xs text-muted-foreground">
                   <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
                   {place.address}
                 </p>
               )}
+
+              <div className="mb-2">
+                <OpenClosedBadge
+                  openingHours={place.openingHours}
+                  businessStatus={place.businessStatus}
+                  size="sm"
+                />
+              </div>
 
               {place.description && (
                 <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">

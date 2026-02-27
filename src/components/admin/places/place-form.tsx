@@ -1,14 +1,20 @@
 "use client";
 
 import {
+  Fragment,
   useActionState,
   useState,
   useCallback,
   useRef,
   useEffect,
+  useTransition,
 } from "react";
 import Link from "next/link";
-import { createPlace, updatePlace } from "@/app/admin/places/actions";
+import {
+  createPlace,
+  updatePlace,
+  refreshFromGoogle,
+} from "@/app/admin/places/actions";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -26,7 +32,9 @@ import { PageHeader } from "@/components/admin/page-header";
 import { PlaceImage } from "@/components/place-image";
 import { SOURCE_OPTIONS } from "@/lib/constants";
 import { getContrastColor } from "@/lib/utils";
-import { Star, MapPin, ExternalLink } from "lucide-react";
+import { Star, MapPin, ExternalLink, RefreshCw } from "lucide-react";
+import { OpenClosedBadge } from "@/components/open-closed-badge";
+import { formatWeekdayHours, type OpeningHoursData } from "@/lib/opening-hours";
 
 interface Category {
   id: number;
@@ -55,6 +63,8 @@ interface PlaceFormProps {
     city: string | null;
     ward: string | null;
     googlePhotoRef: string | null;
+    openingHours: OpeningHoursData | null;
+    businessStatus: string | null;
     categoryIds: number[];
   };
 }
@@ -79,6 +89,7 @@ export function PlaceForm({
   const [selectedSource, setSelectedSource] = useState(
     defaultValues?.source || "manual",
   );
+  const [isRefreshing, startRefresh] = useTransition();
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const gmapsUrl = defaultValues
@@ -208,6 +219,75 @@ export function PlaceForm({
               className="h-56"
             />
           )}
+
+          {/* Opening Hours + Refresh from Google */}
+          {isEdit &&
+            defaultValues?.googlePlaceId &&
+            (() => {
+              const hasHours =
+                defaultValues.openingHours || defaultValues.businessStatus;
+              const hours =
+                formatWeekdayHours(defaultValues.openingHours) ??
+                defaultValues.openingHours?.weekdayDescriptions;
+
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Opening Hours</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={isRefreshing}
+                      onClick={() =>
+                        startRefresh(async () => {
+                          await refreshFromGoogle(defaultValues.id);
+                        })
+                      }
+                    >
+                      <RefreshCw
+                        className={`mr-1 h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`}
+                      />
+                      {isRefreshing ? "Refreshing..." : "Refresh"}
+                    </Button>
+                  </div>
+                  <div className="rounded-md border bg-muted/50 px-3 py-2">
+                    {hasHours ? (
+                      <>
+                        <OpenClosedBadge
+                          openingHours={defaultValues.openingHours}
+                          businessStatus={defaultValues.businessStatus}
+                          size="sm"
+                        />
+                        {hours && (
+                          <div className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
+                            {hours.map((line, i) => {
+                              const colonIdx = line.indexOf(": ");
+                              const day =
+                                colonIdx >= 0 ? line.slice(0, colonIdx) : line;
+                              const time =
+                                colonIdx >= 0 ? line.slice(colonIdx + 2) : "";
+                              return (
+                                <Fragment key={i}>
+                                  <span className="font-medium text-foreground/70">
+                                    {day}
+                                  </span>
+                                  <span>{time}</span>
+                                </Fragment>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-0.5">
+                        No hours data — click Refresh to fetch from Google
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
           {/* Description */}
           <div className="space-y-2">
