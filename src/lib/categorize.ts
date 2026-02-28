@@ -46,6 +46,26 @@ Rules:
 - Extract neighborhood/area if present (e.g. "Asakusa", "Akihabara", "Harajuku", "Roppongi", "Ginza", "Odaiba", "Shimokitazawa", "Ueno", "Ikebukuro")
 - Neighborhoods are well-known sub-areas WITHIN wards — do NOT repeat the ward name as neighborhood
 - If you cannot determine neighborhood, use null
+
+Japanese name hints — use these to categorize even when Google types are generic:
+- katsu/カツ → tonkatsu
+- gyū/牛/ぎゅう → yakiniku or gyudon
+- tori/鳥/鶏/とり → yakitori
+- men/麺/めん → ramen or noodles
+- sushi/鮨/寿司 → sushi
+- don/丼 → donburi (rice bowl)
+- pan/パン → bakery
+- cha/茶 → tea/matcha cafe
+- sake/酒 → sake-bar
+- biru/ビール → beer
+- kare/カレー → curry
+- udon/うどん → udon
+- soba/そば → soba
+- ten/天/てん → tempura
+- yaki/焼 → grilled (yakitori, yakiniku, okonomiyaki depending on context)
+- ramen/ラーメン → ramen
+- gyoza/餃子 → gyoza
+
 - Respond with JSON array ONLY — no markdown fences, no explanation`;
 
 export async function categorizeBatch(

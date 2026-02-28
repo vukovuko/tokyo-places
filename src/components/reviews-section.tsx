@@ -98,22 +98,26 @@ export function ReviewsSection({ reviews, placeName }: ReviewsSectionProps) {
       </div>
 
       <Dialog open={showAll} onOpenChange={setShowAll}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Reviews</DialogTitle>
-            <DialogDescription>
-              {placeName
-                ? `${reviews.length} reviews for ${placeName}`
-                : `${reviews.length} reviews`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {reviews.map((review, i) => (
-              <div key={i}>
-                <ReviewCard review={review} truncate={false} />
-                {i < reviews.length - 1 && <div className="mt-4 border-t" />}
-              </div>
-            ))}
+        <DialogContent className="flex max-h-[80vh] flex-col overflow-hidden p-0 sm:max-w-md">
+          <div className="shrink-0 border-b px-4 py-3">
+            <DialogHeader className="text-left">
+              <DialogTitle>Reviews</DialogTitle>
+              <DialogDescription>
+                {placeName
+                  ? `${reviews.length} reviews for ${placeName}`
+                  : `${reviews.length} reviews`}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto px-6 pb-6">
+            <div className="space-y-4 pt-4">
+              {reviews.map((review, i) => (
+                <div key={i}>
+                  <ReviewCard review={review} truncate={false} />
+                  {i < reviews.length - 1 && <div className="mt-4 border-t" />}
+                </div>
+              ))}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
