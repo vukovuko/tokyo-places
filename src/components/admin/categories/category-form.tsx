@@ -24,23 +24,7 @@ import { PageHeader } from "@/components/admin/page-header";
 import { PRESET_COLORS, ICON_OPTIONS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
-import * as LucideIcons from "lucide-react";
-
-function getIcon(iconName: string) {
-  const pascalCase = iconName
-    .split("-")
-    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    .join("");
-  return (
-    // biome-ignore lint: dynamic icon lookup
-    (
-      LucideIcons as unknown as Record<
-        string,
-        React.ComponentType<Record<string, unknown>>
-      >
-    )[pascalCase] || null
-  );
-}
+import { getIcon } from "@/lib/icons";
 
 interface CategoryFormProps {
   title: string;

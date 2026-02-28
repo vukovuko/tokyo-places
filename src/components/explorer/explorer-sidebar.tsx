@@ -150,6 +150,7 @@ function SidebarContent({
   const [inputValue, setInputValue] = useState(filters.search);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const [categorySearch, setCategorySearch] = useState("");
 
   const fuse = useMemo(
     () =>
@@ -161,9 +162,14 @@ function SidebarContent({
   );
 
   const categoryFuse = useMemo(
-    () => new Fuse(categories, { keys: ["name"], threshold: 0.3 }),
+    () => new Fuse(categories, { keys: ["name"], threshold: 0.4 }),
     [categories],
   );
+
+  const visibleCategories = useMemo(() => {
+    if (!categorySearch.trim()) return categories;
+    return categoryFuse.search(categorySearch).map((r) => r.item);
+  }, [categories, categorySearch, categoryFuse]);
 
   const wardItems = useMemo(() => wards.map((w) => ({ name: w })), [wards]);
   const wardFuse = useMemo(
@@ -676,15 +682,26 @@ function SidebarContent({
 
         {/* Categories */}
         <div className="space-y-2">
-          <p className="text-sm font-medium">Categories</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium shrink-0">Categories</p>
+            <input
+              placeholder="Find a category..."
+              value={categorySearch}
+              onChange={(e) => setCategorySearch(e.target.value)}
+              className="h-6 text-xs bg-transparent border-b border-border outline-none placeholder:text-muted-foreground/50 w-full"
+            />
+          </div>
           <div className="flex flex-wrap gap-1.5">
-            {categories.map((cat) => {
+            {visibleCategories.map((cat) => {
               const isActive = filters.categoryIds.includes(cat.id);
               return (
                 <button
                   key={cat.id}
                   type="button"
-                  onClick={() => toggleCategory(cat.id)}
+                  onClick={() => {
+                    toggleCategory(cat.id);
+                    setCategorySearch("");
+                  }}
                 >
                   <Badge
                     variant={isActive ? "default" : "outline"}
