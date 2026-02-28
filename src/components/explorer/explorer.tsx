@@ -46,12 +46,14 @@ export function Explorer({ places, categories, isAdmin }: ExplorerProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [panKey, setPanKey] = useState(0);
 
+  const [panPlaceId, setPanPlaceId] = useState<number | null>(null);
+
   const panTarget = useMemo(() => {
-    if (!selectedPlaceId || panKey === 0) return null;
-    const p = places.find((pl) => pl.id === selectedPlaceId);
+    if (!panPlaceId || panKey === 0) return null;
+    const p = places.find((pl) => pl.id === panPlaceId);
     if (!p) return null;
     return { lat: p.latitude, lng: p.longitude, key: panKey };
-  }, [selectedPlaceId, panKey, places]);
+  }, [panPlaceId, panKey, places]);
   const {
     position: userPosition,
     heading: userHeading,
@@ -288,7 +290,12 @@ export function Explorer({ places, categories, isAdmin }: ExplorerProps) {
           onClose={() => selectPlace(null)}
           onShowOnMap={() => {
             if (view !== "map") setView("map");
+            setPanPlaceId(selectedPlace.id);
             setPanKey((k) => k + 1);
+            // On mobile, close the drawer so the map is visible
+            if (window.innerWidth < 768) {
+              setTimeout(() => selectPlace(null), 300);
+            }
           }}
           isAdmin={isAdmin}
         />
