@@ -39,6 +39,97 @@ interface Category {
   placeCount: number;
 }
 
+// Visual-only grouping for the sidebar — not stored in the DB
+const CATEGORY_GROUPS: { label: string; names: string[] }[] = [
+  {
+    label: "Food",
+    names: [
+      "Restaurant",
+      "Japanese Restaurant",
+      "Western Restaurant",
+      "Italian Restaurant",
+      "Korean Restaurant",
+      "Sushi",
+      "Ramen",
+      "Curry",
+      "Donburi",
+      "Tonkatsu",
+      "Gyoza",
+      "Okonomiyaki",
+      "Takoyaki",
+      "Taiyaki",
+      "Yakiniku",
+      "Shabu-shabu",
+      "Motsu Nabe",
+      "Seafood",
+      "Izakaya",
+      "Food Court",
+      "Bakery",
+      "Pizza",
+      "Butcher Shop",
+    ],
+  },
+  {
+    label: "Cafes & Sweets",
+    names: [
+      "Café",
+      "Dessert",
+      "Ice Cream Shop",
+      "Candy Shop",
+      "Chocolate Shop",
+    ],
+  },
+  {
+    label: "Drinks & Nightlife",
+    names: ["Bar", "Sake Bar", "Craft Beer", "Live Music Venue"],
+  },
+  {
+    label: "Sightseeing",
+    names: [
+      "Temple",
+      "Shrine",
+      "Landmark",
+      "Park",
+      "Garden",
+      "Viewpoint",
+      "Museum",
+      "Theater",
+    ],
+  },
+  {
+    label: "Shopping",
+    names: [
+      "Shopping Mall",
+      "Shopping Street",
+      "Vintage & Antiques",
+      "Bookstore",
+      "Gift Shop",
+      "Art Supply Store",
+      "Cosmetics Shop",
+      "Game Shop",
+      "Home Goods",
+      "Convenience Store",
+      "Farm Shop",
+    ],
+  },
+  {
+    label: "Activities",
+    names: [
+      "Onsen",
+      "Public Bath",
+      "Amusement Park",
+      "Sports",
+      "River Cruise",
+      "Otaku & Anime",
+      "Event Space",
+    ],
+  },
+  {
+    label: "Travel",
+    names: ["Train Station", "Ryokan", "Neighborhood"],
+  },
+];
+
 interface SearchPlace {
   id: number;
   title: string;
@@ -170,6 +261,30 @@ function SidebarContent({
     if (!categorySearch.trim()) return categories;
     return categoryFuse.search(categorySearch).map((r) => r.item);
   }, [categories, categorySearch, categoryFuse]);
+
+  const groupedCategories = useMemo(() => {
+    const catsByName: Record<string, Category> = {};
+    for (const c of visibleCategories) catsByName[c.name] = c;
+    const assigned = new Set<string>();
+
+    const groups = CATEGORY_GROUPS.map((group) => {
+      const cats = group.names
+        .filter((name) => name in catsByName)
+        .map((name) => {
+          assigned.add(name);
+          return catsByName[name];
+        });
+      return { label: group.label, categories: cats };
+    }).filter((g) => g.categories.length > 0);
+
+    // Anything not in a group goes into "Other"
+    const other = visibleCategories.filter((c) => !assigned.has(c.name));
+    if (other.length > 0) {
+      groups.push({ label: "Other", categories: other });
+    }
+
+    return groups;
+  }, [visibleCategories]);
 
   const wardItems = useMemo(() => wards.map((w) => ({ name: w })), [wards]);
   const wardFuse = useMemo(
@@ -691,35 +806,44 @@ function SidebarContent({
               className="h-6 text-xs bg-transparent border-b border-border outline-none placeholder:text-muted-foreground/50 w-full"
             />
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {visibleCategories.map((cat) => {
-              const isActive = filters.categoryIds.includes(cat.id);
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => {
-                    toggleCategory(cat.id);
-                    setCategorySearch("");
-                  }}
-                >
-                  <Badge
-                    variant={isActive ? "default" : "outline"}
-                    style={
-                      isActive
-                        ? {
-                            backgroundColor: cat.color,
-                            color: getContrastColor(cat.color),
+          <div className="space-y-3">
+            {groupedCategories.map((group) => (
+              <div key={group.label} className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {group.label}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {group.categories.map((cat) => {
+                    const isActive = filters.categoryIds.includes(cat.id);
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          toggleCategory(cat.id);
+                          setCategorySearch("");
+                        }}
+                      >
+                        <Badge
+                          variant={isActive ? "default" : "outline"}
+                          style={
+                            isActive
+                              ? {
+                                  backgroundColor: cat.color,
+                                  color: getContrastColor(cat.color),
+                                }
+                              : undefined
                           }
-                        : undefined
-                    }
-                    className="cursor-pointer"
-                  >
-                    {cat.name} ({cat.placeCount})
-                  </Badge>
-                </button>
-              );
-            })}
+                          className="cursor-pointer"
+                        >
+                          {cat.name} ({cat.placeCount})
+                        </Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
