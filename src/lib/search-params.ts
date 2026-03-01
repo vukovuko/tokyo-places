@@ -7,9 +7,9 @@ export interface ParsedSearchParams {
   categories: string[];
   visited: string | undefined;
   source: string | undefined;
-  city: string | undefined;
-  ward: string | undefined;
-  neighborhood: string | undefined;
+  cities: string[];
+  wards: string[];
+  neighborhoods: string[];
 }
 
 export function parseSearchParams(
@@ -24,9 +24,9 @@ export function parseSearchParams(
     categories: parseArray(searchParams.category),
     visited: searchParams.visited as string | undefined,
     source: searchParams.source as string | undefined,
-    city: searchParams.city as string | undefined,
-    ward: searchParams.ward as string | undefined,
-    neighborhood: searchParams.neighborhood as string | undefined,
+    cities: parseArray(searchParams.city),
+    wards: parseArray(searchParams.ward),
+    neighborhoods: parseArray(searchParams.neighborhood),
   };
 }
 
@@ -70,17 +70,23 @@ export function buildSearchParams(
     if (params.source === "") newParams.delete("source");
     else newParams.set("source", params.source);
   }
-  if (params.city !== undefined) {
-    if (params.city === "") newParams.delete("city");
-    else newParams.set("city", params.city);
+  if (params.cities !== undefined) {
+    newParams.delete("city");
+    for (const c of params.cities) {
+      newParams.append("city", c);
+    }
   }
-  if (params.ward !== undefined) {
-    if (params.ward === "") newParams.delete("ward");
-    else newParams.set("ward", params.ward);
+  if (params.wards !== undefined) {
+    newParams.delete("ward");
+    for (const w of params.wards) {
+      newParams.append("ward", w);
+    }
   }
-  if (params.neighborhood !== undefined) {
-    if (params.neighborhood === "") newParams.delete("neighborhood");
-    else newParams.set("neighborhood", params.neighborhood);
+  if (params.neighborhoods !== undefined) {
+    newParams.delete("neighborhood");
+    for (const n of params.neighborhoods) {
+      newParams.append("neighborhood", n);
+    }
   }
 
   return newParams;

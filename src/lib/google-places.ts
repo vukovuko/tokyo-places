@@ -61,7 +61,15 @@ export async function searchPlace(query: string): Promise<PlaceResult | null> {
         "X-Goog-FieldMask": SEARCH_FIELD_MASK,
         Referer: "http://localhost:3000",
       },
-      body: JSON.stringify({ textQuery: query }),
+      body: JSON.stringify({
+        textQuery: query,
+        locationRestriction: {
+          rectangle: {
+            low: { latitude: 24.0, longitude: 122.0 },
+            high: { latitude: 46.0, longitude: 146.0 },
+          },
+        },
+      }),
     },
   );
 

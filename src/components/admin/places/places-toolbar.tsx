@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,12 @@ import {
   ComboboxContent,
   ComboboxList,
   ComboboxItem,
+  ComboboxChips,
+  ComboboxChip,
+  ComboboxChipsInput,
+  ComboboxEmpty,
+  ComboboxValue,
+  useComboboxAnchor,
 } from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +35,55 @@ interface PlacesToolbarProps {
   cities: string[];
   wards: string[];
   neighborhoods: string[];
+}
+
+function MultiSelectCombobox({
+  items,
+  value,
+  onValueChange,
+  placeholder,
+}: {
+  items: string[];
+  value: string[];
+  onValueChange: (value: string[]) => void;
+  placeholder: string;
+}) {
+  const anchor = useComboboxAnchor();
+
+  return (
+    <Combobox
+      multiple
+      autoHighlight
+      items={items}
+      value={value}
+      onValueChange={onValueChange}
+    >
+      <ComboboxChips ref={anchor} className="min-w-0">
+        <ComboboxValue>
+          {(values) => (
+            <React.Fragment>
+              {(values as string[]).map((v) => (
+                <ComboboxChip key={v}>{v}</ComboboxChip>
+              ))}
+              <ComboboxChipsInput
+                placeholder={value.length === 0 ? placeholder : ""}
+              />
+            </React.Fragment>
+          )}
+        </ComboboxValue>
+      </ComboboxChips>
+      <ComboboxContent anchor={anchor}>
+        <ComboboxEmpty>No matches.</ComboboxEmpty>
+        <ComboboxList>
+          {(item) => (
+            <ComboboxItem key={item} value={item}>
+              {item}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  );
 }
 
 export function PlacesToolbar({
@@ -61,16 +117,16 @@ export function PlacesToolbar({
 
   const currentVisited = searchParams.get("visited") || "all";
   const currentCategories = searchParams.getAll("category");
-  const currentCity = searchParams.get("city") || "";
-  const currentWard = searchParams.get("ward") || "";
-  const currentNeighborhood = searchParams.get("neighborhood") || "";
+  const currentCities = searchParams.getAll("city");
+  const currentWards = searchParams.getAll("ward");
+  const currentNeighborhoods = searchParams.getAll("neighborhood");
   const currentSearch = searchParams.get("search") || "";
   const hasFilters =
     currentVisited !== "all" ||
     currentCategories.length > 0 ||
-    currentCity ||
-    currentWard ||
-    currentNeighborhood ||
+    currentCities.length > 0 ||
+    currentWards.length > 0 ||
+    currentNeighborhoods.length > 0 ||
     currentSearch;
 
   function toggleCategory(catId: number) {
@@ -79,6 +135,25 @@ export function PlacesToolbar({
       ? currentCategories.filter((c) => c !== idStr)
       : [...currentCategories, idStr];
     updateParams({ categories: next.length > 0 ? next : [] });
+  }
+
+  function removeCategory(catId: string) {
+    const next = currentCategories.filter((c) => c !== catId);
+    updateParams({ categories: next });
+  }
+
+  function removeCity(city: string) {
+    updateParams({ cities: currentCities.filter((c) => c !== city) });
+  }
+
+  function removeWard(ward: string) {
+    updateParams({ wards: currentWards.filter((w) => w !== ward) });
+  }
+
+  function removeNeighborhood(neighborhood: string) {
+    updateParams({
+      neighborhoods: currentNeighborhoods.filter((n) => n !== neighborhood),
+    });
   }
 
   return (
@@ -124,9 +199,9 @@ export function PlacesToolbar({
       </div>
 
       {/* Other filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Visited filter */}
-        <div className="w-40">
+      <div className="flex items-start gap-3">
+        <div className="grid flex-1 grid-cols-2 gap-3 lg:grid-cols-4">
+          {/* Visited filter */}
           <Combobox
             items={VISITED_OPTIONS.map((o) => o.value)}
             value={currentVisited}
@@ -151,113 +226,121 @@ export function PlacesToolbar({
               </ComboboxList>
             </ComboboxContent>
           </Combobox>
+
+          {/* City filter */}
+          <MultiSelectCombobox
+            items={cities}
+            value={currentCities}
+            onValueChange={(val) => updateParams({ cities: val })}
+            placeholder="City"
+          />
+
+          {/* Ward filter */}
+          <MultiSelectCombobox
+            items={wards}
+            value={currentWards}
+            onValueChange={(val) => updateParams({ wards: val })}
+            placeholder="Ward"
+          />
+
+          {/* Neighborhood filter */}
+          <MultiSelectCombobox
+            items={neighborhoods}
+            value={currentNeighborhoods}
+            onValueChange={(val) => updateParams({ neighborhoods: val })}
+            placeholder="Neighborhood"
+          />
         </div>
 
-        {/* City filter */}
-        <div className="w-40">
-          <Combobox
-            items={["", ...cities]}
-            value={currentCity}
-            onValueChange={(val) =>
-              updateParams({ city: (val as string) || undefined })
-            }
-          >
-            <ComboboxInput placeholder="City" showClear />
-            <ComboboxContent>
-              <ComboboxList>
-                {(value) => {
-                  if (value === "") {
-                    return (
-                      <ComboboxItem key="all" value="">
-                        All Cities
-                      </ComboboxItem>
-                    );
-                  }
-                  return (
-                    <ComboboxItem key={value} value={value}>
-                      {value}
-                    </ComboboxItem>
-                  );
-                }}
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
-        </div>
-
-        {/* Ward filter */}
-        <div className="w-40">
-          <Combobox
-            items={["", ...wards]}
-            value={currentWard}
-            onValueChange={(val) =>
-              updateParams({ ward: (val as string) || undefined })
-            }
-          >
-            <ComboboxInput placeholder="Ward" showClear />
-            <ComboboxContent>
-              <ComboboxList>
-                {(value) => {
-                  if (value === "") {
-                    return (
-                      <ComboboxItem key="all" value="">
-                        All Wards
-                      </ComboboxItem>
-                    );
-                  }
-                  return (
-                    <ComboboxItem key={value} value={value}>
-                      {value}
-                    </ComboboxItem>
-                  );
-                }}
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
-        </div>
-
-        {/* Neighborhood filter */}
-        <div className="w-40">
-          <Combobox
-            items={["", ...neighborhoods]}
-            value={currentNeighborhood}
-            onValueChange={(val) =>
-              updateParams({ neighborhood: (val as string) || undefined })
-            }
-          >
-            <ComboboxInput placeholder="Neighborhood" showClear />
-            <ComboboxContent>
-              <ComboboxList>
-                {(value) => {
-                  if (value === "") {
-                    return (
-                      <ComboboxItem key="all" value="">
-                        All Neighborhoods
-                      </ComboboxItem>
-                    );
-                  }
-                  return (
-                    <ComboboxItem key={value} value={value}>
-                      {value}
-                    </ComboboxItem>
-                  );
-                }}
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
-        </div>
-
-        {/* Clear filters */}
+        {/* Clear all filters */}
         {hasFilters && (
           <Button
             variant="ghost"
             size="sm"
+            className="shrink-0"
             onClick={() => router.push("/admin/places")}
           >
             <X className="mr-1 h-4 w-4" />
-            Clear filters
+            Clear all
           </Button>
         )}
       </div>
+
+      {/* Active filter chips */}
+      {hasFilters && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {currentSearch && (
+            <Badge variant="secondary" className="gap-1">
+              Search: {currentSearch}
+              <button
+                type="button"
+                onClick={() => updateParams({ search: "" })}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {currentVisited !== "all" && (
+            <Badge variant="secondary" className="gap-1">
+              {VISITED_OPTIONS.find((o) => o.value === currentVisited)?.label ??
+                currentVisited}
+              <button
+                type="button"
+                onClick={() => updateParams({ visited: "all" })}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {currentCategories.map((catId) => {
+            const cat = categories.find((c) => String(c.id) === catId);
+            return (
+              <Badge
+                key={catId}
+                variant="secondary"
+                className="gap-1"
+                style={
+                  cat
+                    ? {
+                        backgroundColor: cat.color,
+                        color: getContrastColor(cat.color),
+                      }
+                    : undefined
+                }
+              >
+                {cat?.name ?? catId}
+                <button type="button" onClick={() => removeCategory(catId)}>
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            );
+          })}
+          {currentCities.map((city) => (
+            <Badge key={city} variant="secondary" className="gap-1">
+              City: {city}
+              <button type="button" onClick={() => removeCity(city)}>
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+          {currentWards.map((ward) => (
+            <Badge key={ward} variant="secondary" className="gap-1">
+              Ward: {ward}
+              <button type="button" onClick={() => removeWard(ward)}>
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+          {currentNeighborhoods.map((n) => (
+            <Badge key={n} variant="secondary" className="gap-1">
+              Neighborhood: {n}
+              <button type="button" onClick={() => removeNeighborhood(n)}>
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

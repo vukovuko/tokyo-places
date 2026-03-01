@@ -21,9 +21,9 @@ interface GetPlacesOptions {
   categoryIds?: string[];
   visited?: string;
   source?: string;
-  city?: string;
-  ward?: string;
-  neighborhood?: string;
+  cities?: string[];
+  wards?: string[];
+  neighborhoods?: string[];
   sort?: string;
   order?: "asc" | "desc";
   page?: number;
@@ -36,9 +36,9 @@ export async function getPlaces(options: GetPlacesOptions = {}) {
     categoryIds = [],
     visited,
     source,
-    city,
-    ward,
-    neighborhood,
+    cities = [],
+    wards = [],
+    neighborhoods = [],
     sort = "createdAt",
     order = "desc",
     page = 1,
@@ -64,16 +64,16 @@ export async function getPlaces(options: GetPlacesOptions = {}) {
     conditions.push(eq(places.source, source));
   }
 
-  if (city) {
-    conditions.push(eq(places.city, city));
+  if (cities.length > 0) {
+    conditions.push(inArray(places.city, cities));
   }
 
-  if (ward) {
-    conditions.push(eq(places.ward, ward));
+  if (wards.length > 0) {
+    conditions.push(inArray(places.ward, wards));
   }
 
-  if (neighborhood) {
-    conditions.push(eq(places.neighborhood, neighborhood));
+  if (neighborhoods.length > 0) {
+    conditions.push(inArray(places.neighborhood, neighborhoods));
   }
 
   if (categoryIds.length > 0) {

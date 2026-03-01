@@ -14,9 +14,29 @@ import {
 
 const DELAY_MS = 120;
 const AI_BATCH_SIZE = 25;
+const FAILED_CSV_PATH = path.resolve(
+  __dirname,
+  "../../public/failed-imports.csv",
+);
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function appendToFailedCsv(places: { title: string; reason: string }[]) {
+  if (places.length === 0) return;
+
+  const exists = fs.existsSync(FAILED_CSV_PATH);
+  const lines = places.map(
+    (p) => `"${(p.title || "").replace(/"/g, '""')}",${p.reason},"","",""`,
+  );
+
+  if (!exists) {
+    const header = "Title,Reason,URL,Tags,Comment";
+    fs.writeFileSync(FAILED_CSV_PATH, [header, ...lines].join("\n"), "utf-8");
+  } else {
+    fs.appendFileSync(FAILED_CSV_PATH, "\n" + lines.join("\n"), "utf-8");
+  }
 }
 
 async function main() {
@@ -32,7 +52,8 @@ async function main() {
     console.log("--fresh flag: wiping existing data...");
     await db.delete(schema.placeCategories);
     await db.delete(schema.places);
-    console.log("Cleared existing places.\n");
+    await db.delete(schema.categories);
+    console.log("Cleared existing places and categories.\n");
   }
 
   // Build a set of existing place titles for duplicate detection
@@ -64,6 +85,7 @@ async function main() {
   let skipped = 0;
   let failed = 0;
   const failedRows: string[][] = [];
+  const skippedRows: { title: string; reason: string }[] = [];
   // Track imported places for Phase 2
   const importedPlaces: PlaceForCategorization[] = [];
 
@@ -79,6 +101,7 @@ async function main() {
     // Skip duplicates (by title match)
     if (existingTitles.has(title.toLowerCase())) {
       skipped++;
+      skippedRows.push({ title, reason: "duplicate-title" });
       if ((i + 1) % 100 === 0 || i === dataRows.length - 1) {
         console.log(
           `[${i + 1}/${dataRows.length}] Imported: ${imported} | Skipped: ${skipped} | Failed: ${failed}`,
@@ -101,6 +124,7 @@ async function main() {
       // Also skip if Google Place ID already exists
       if (place.id && existingGoogleIds.has(place.id)) {
         skipped++;
+        skippedRows.push({ title, reason: "duplicate-google-id" });
         existingTitles.add(title.toLowerCase());
         await sleep(DELAY_MS);
         continue;
@@ -165,14 +189,27 @@ async function main() {
   );
 
   if (failedRows.length > 0) {
-    const header = "Назив,Белешка,URL адреса,Ознаке,Коментар";
-    const csvLines = failedRows.map((row) =>
-      row.map((cell) => (cell.includes(",") ? `"${cell}"` : cell)).join(","),
-    );
+    // Write failed-imports.csv (overwrite — this is the start of a fresh import)
+    const header = "Title,Reason,URL,Tags,Comment";
+    const csvLines = failedRows.map((row) => {
+      const title = (row[0] || "").replace(/"/g, '""');
+      const url = (row[2] || "").replace(/"/g, '""');
+      const tags = (row[3] || "").replace(/"/g, '""');
+      const comment = (row[4] || "").replace(/"/g, '""');
+      return `"${title}",google-not-found,"${url}","${tags}","${comment}"`;
+    });
     const failedCsv = [header, ...csvLines].join("\n");
-    const outPath = path.resolve(__dirname, "../../public/failed-imports.csv");
-    fs.writeFileSync(outPath, failedCsv, "utf-8");
-    console.log(`Failed places written to: ${outPath}\n`);
+    fs.writeFileSync(FAILED_CSV_PATH, failedCsv, "utf-8");
+    console.log(
+      `${failedRows.length} failed places written to: ${FAILED_CSV_PATH}\n`,
+    );
+  }
+
+  if (skippedRows.length > 0) {
+    appendToFailedCsv(skippedRows);
+    console.log(
+      `${skippedRows.length} skipped places appended to: ${FAILED_CSV_PATH}\n`,
+    );
   }
 
   // ── Phase 2: AI categorization (only for NEW places) ────────────────
@@ -193,6 +230,8 @@ async function main() {
   let categorized = 0;
   let newCategoriesCreated = 0;
   let totalAssignments = 0;
+  let removedNonJapan = 0;
+  const nonJapanPlaces: string[] = [];
   const totalBatches = Math.ceil(importedPlaces.length / AI_BATCH_SIZE);
 
   for (let b = 0; b < totalBatches; b++) {
@@ -207,6 +246,17 @@ async function main() {
       for (const result of results) {
         const place = batch[result.index - 1];
         if (!place) continue;
+
+        // Skip non-Japan places — delete from DB (cascade deletes category links)
+        if (!result.japan) {
+          await db
+            .delete(schema.places)
+            .where(eq(schema.places.id, place.dbId));
+          removedNonJapan++;
+          nonJapanPlaces.push(place.title);
+          console.log(`  REMOVED (non-Japan): ${place.title}`);
+          continue;
+        }
 
         // Create new categories if needed
         for (const newCat of result.newCategories) {
@@ -261,6 +311,10 @@ async function main() {
       }
     } catch (err) {
       console.error(`  AI batch ${b + 1} failed:`, err);
+      failed += batch.length;
+      appendToFailedCsv(
+        batch.map((p) => ({ title: p.title, reason: "ai-batch-failed" })),
+      );
     }
 
     console.log(
@@ -273,8 +327,19 @@ async function main() {
   console.log(`Places skipped:       ${skipped}`);
   console.log(`Places failed:        ${failed}`);
   console.log(`Places categorized:   ${categorized}`);
+  console.log(`Non-Japan removed:    ${removedNonJapan}`);
   console.log(`New categories:       ${newCategoriesCreated}`);
   console.log(`Category assignments: ${totalAssignments}`);
+
+  if (nonJapanPlaces.length > 0) {
+    appendToFailedCsv(
+      nonJapanPlaces.map((title) => ({ title, reason: "non-japan" })),
+    );
+    console.log(
+      `\n${nonJapanPlaces.length} non-Japan places appended to: ${FAILED_CSV_PATH}`,
+    );
+    console.log(`Removed non-Japan places:\n  ${nonJapanPlaces.join("\n  ")}`);
+  }
 
   await pool.end();
 }

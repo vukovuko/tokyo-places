@@ -19,6 +19,7 @@ export interface NewCategory {
 export interface CategorizationResult {
   index: number;
   categories: string[];
+  japan: boolean;
   city: string | null;
   ward: string | null;
   neighborhood: string | null;
@@ -46,6 +47,7 @@ Rules:
 - Extract neighborhood/area if present (e.g. "Asakusa", "Akihabara", "Harajuku", "Roppongi", "Ginza", "Odaiba", "Shimokitazawa", "Ueno", "Ikebukuro")
 - Neighborhoods are well-known sub-areas WITHIN wards — do NOT repeat the ward name as neighborhood
 - If you cannot determine neighborhood, use null
+- Set "japan": true if the place is in Japan, false otherwise. IMPORTANT: Look at the ADDRESS to determine this — if the address contains a Japanese prefecture, city, or is clearly in Japan, set true. This is a Japan travel app so MOST places will be in Japan. Only set false for places whose address is clearly in another country (e.g. Serbia, USA, France). When in doubt, default to true
 
 Japanese name hints — use these to categorize even when Google types are generic:
 - katsu/カツ → tonkatsu
@@ -86,7 +88,7 @@ Places:
 ${placeLines}
 
 Respond with JSON array ONLY:
-[{"i":1,"categories":["slug"],"city":"Tokyo","ward":"Shibuya","neighborhood":"Harajuku","newCategories":[]}]`;
+[{"i":1,"categories":["slug"],"japan":true,"city":"Tokyo","ward":"Shibuya","neighborhood":"Harajuku","newCategories":[]}]`;
 
   const response = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
@@ -106,6 +108,7 @@ Respond with JSON array ONLY:
   const parsed = JSON.parse(jsonStr) as Array<{
     i: number;
     categories: string[];
+    japan?: boolean;
     city?: string | null;
     ward?: string | null;
     neighborhood?: string | null;
@@ -115,6 +118,7 @@ Respond with JSON array ONLY:
   return parsed.map((item) => ({
     index: item.i,
     categories: item.categories,
+    japan: item.japan !== false,
     city: item.city ?? null,
     ward: item.ward ?? null,
     neighborhood: item.neighborhood ?? null,

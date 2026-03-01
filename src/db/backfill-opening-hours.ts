@@ -1,6 +1,6 @@
 import { Pool } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
-import { isNotNull, eq } from "drizzle-orm";
+import { and, isNotNull, isNull, eq } from "drizzle-orm";
 import * as schema from "./schema";
 import { getPlaceDetails } from "../lib/google-places";
 
@@ -14,8 +14,13 @@ async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
   const db = drizzle(pool, { schema });
 
+  // Only fetch details for places that don't already have reviews
+  // (searchPlace already gets hours, photos, rating — reviews are the main thing it misses)
   const placesToUpdate = await db.query.places.findMany({
-    where: isNotNull(schema.places.googlePlaceId),
+    where: and(
+      isNotNull(schema.places.googlePlaceId),
+      isNull(schema.places.googleReviews),
+    ),
     columns: { id: true, title: true, googlePlaceId: true },
   });
 
