@@ -29,6 +29,7 @@
     "@base-ui/react": "^1.2.0",
     "@googlemaps/markerclusterer": "^2.6.2",
     "@neondatabase/serverless": "^1.0.2",
+    "@radix-ui/react-label": "^2.1.8",
     "@vis.gl/react-google-maps": "^1.7.1",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",

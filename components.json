@@ -19,5 +19,7 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
-  "registries": {}
+  "registries": {
+    "@wigggle-ui": "https://wigggle-ui.vercel.app/r/{name}.json"
+  }
 }
